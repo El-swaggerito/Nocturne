@@ -353,3 +353,39 @@ git push
 ```
 
 Never commit `.env` files, wallet keys, provider secrets or private invoices. When Issue #9 meets all agreed acceptance criteria, mention `Closes #9` in its pull request and request review from another team member, including Joe for security-sensitive changes.
+
+
+---
+
+## Issue #10: restricted testnet payment proposal client
+
+**Status:** prepared for offline tests and contract interface review. The
+payment CLI remains inference-only. The library's restricted testnet signing
+path is separately opt-in, and no transaction is sent by default.
+
+- `src/near.ts` contains the narrow `request_payment` adapter and result
+  classification. No other change method is exposed.
+- `src/payment-journal.ts` stores a stable invoice-scoped request ID and an
+  irreversible attempt marker so a timeout or restart cannot accidentally
+  generate a different ID or broadcast again.
+- `src/config.ts` loads dedicated testnet account details, the restricted
+  agent key, an explicitly permitted journal location and two opt-in switches.
+- `tests/near.test.ts` exercises malformed input, key permissions, request
+  persistence, timeouts, duplicate prevention and finality classifications.
+
+**Approval gate:** Method argument names
+(`request_id`, `recipient_id`, `amount_yocto`, `invoice_reference`) are
+provisional pending [Issue #6](https://github.com/El-swaggerito/Nocturne/issues/6).
+Key setup and revocation require the security review under Issue #4. Keep
+`NEAR_ENABLE_TESTNET_WRITES=no` and `NEAR_CONTRACT_INTERFACE_AGREED=no` until
+those reviews are complete. Real testnet evidence belongs to Issue #14.
+
+NEAR transaction execution and asynchronous payout settlement are different
+facts. A transaction with final execution status `FINAL` is still shown as
+`pending` until a trusted contract settlement view is agreed and checks the
+matching request ID, recipient and amount. Uncertain RPC responses remain
+pending and are never automatically resent.
+
+The default `.local/` journal is ignored by Git. Never delete it during a
+network failure or include it in public attachments. Preserve it across
+restarts and arrange durable backups for anything beyond local development.
