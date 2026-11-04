@@ -1,0 +1,5 @@
+SAMPLE INVOICE (fictional, contradictory amounts)
+Invoice ref: INV-2026-CONFLICT-01
+Payee NEAR account: merchant.testnet
+Amount payable: 1.50 NEAR
+Amount payable: 2.50 NEAR
