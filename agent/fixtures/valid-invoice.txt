@@ -1,0 +1,6 @@
+SAMPLE INVOICE (fictional data only)
+Invoice ref: INV-2026-0001
+Supplier: Northstar Test Services
+Payee NEAR account: merchant.testnet
+Amount payable: 1.50 NEAR
+Purpose: Development services
