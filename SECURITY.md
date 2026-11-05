@@ -41,8 +41,11 @@ Full details: [`docs/security/threat-model.md`](docs/security/threat-model.md).
 | Control | Status |
 |---|---|
 | Owner-only freeze, owner ≠ agent at init | Implemented (#1) |
-| Agent-only `request_payment`, agent rotation | Planned (#3) |
+| Only the owner can initialise the contract | Implemented (#3) |
+| Agent-only check (`assert_agent`) | Implemented (#3), applied once `request_payment` exists (#6) |
+| Owner-only agent rotation | **Missing**: no method to replace `agent_id` yet |
 | Limits, allowlist, freeze enforcement | Planned (#5) |
 | Reserved payments, private callback, dedupe | Planned (#6) |
-| Restricted agent access key | Planned (#4) |
+| Restricted agent access key | Specified in [`docs/security/agent-permissions.md`](docs/security/agent-permissions.md) (#4). Testnet evidence pending (#14) |
+| Agent client refuses non-restricted keys | Implemented (#10) |
 | Adversarial and sandbox tests | Planned (#7) |
