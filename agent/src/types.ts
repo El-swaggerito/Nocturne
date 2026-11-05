@@ -33,16 +33,50 @@ export const nearAccountIdSchema = z
   .max(64)
   .regex(/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/, "Invalid NEAR account ID");
 
+
 export const invoiceProposalSchema = z.strictObject({
   recipient: nearAccountIdSchema,
+
   amountYoctoNear: z
     .string()
-    .regex(/^[1-9][0-9]*$/, "Must be a positive integer decimal string")
-    .refine((value) => BigInt(value) <= MAX_YOCTO_NEAR, "Exceeds NEAR u128 limit"),
-  invoiceReference: z.string().trim().min(1).max(128),
-  supplierName: z.string().trim().min(1).max(128).optional(),
+    .regex(
+      /^[1-9][0-9]*$/,
+      "Must be a positive integer decimal string",
+    )
+    .refine(
+      (value) => {
+        // Check the format before validating the amount.
+        if (!/^[1-9][0-9]*$/.test(value)) {
+          return false;
+        }
+
+        // Compare decimal integers without unsafe conversion.
+        const max = MAX_YOCTO_NEAR.toString();
+
+        return (
+          value.length < max.length ||
+          (value.length === max.length && value <= max)
+        );
+      },
+      "Amount exceeds the NEAR u128 limit",
+    ),
+
+  invoiceReference: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128),
+
+  supplierName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .optional(),
+
   validationErrors: z.tuple([]),
 });
+
 
 /** This is data only; never treat a proposal as authorisation to transfer. */
 export type InvoiceProposal = z.infer<typeof invoiceProposalSchema>;

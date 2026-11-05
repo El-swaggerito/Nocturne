@@ -2,7 +2,7 @@
 
 This TypeScript package extracts **candidate payment fields** from explicitly labelled text invoices using NEAR AI Cloud. It validates the response against strict Zod schemas and checks extracted payment details against the original invoice labels.
 
-**It does not authorise payments, sign NEAR transactions or call the Guard contract.**
+**Invoice extraction alone does not authorise payments.** Issue #10 adds an opt-in, server-side NEAR testnet payment client, disabled for live transactions until the security/key and contract interface reviews are complete. The existing invoice CLI never sends payments.
 
 For the complete operating guide, see [AGENT_UTILISATION.md](./AGENT_UTILISATION.md).
 
@@ -13,6 +13,7 @@ For the complete operating guide, see [AGENT_UTILISATION.md](./AGENT_UTILISATION
 - Default model: `deepseek/deepseek-v3.2`
 - OpenAI-compatible TypeScript SDK `7.15.0`
 - Zod `4.6.5`
+- NEAR API JS `7.4.0` (Issue #10, restricted testnet client)
 
 ## Quick start
 
@@ -90,6 +91,115 @@ On 4 November 2026, the developer reported a passing TypeScript typecheck, **21 
 
 ## Current limitations and dependencies
 
-Issue [#6](https://github.com/El-swaggerito/Nocturne/issues/6) must confirm the final `request_payment` interface, request ID and invoice reference/hash format. Issue [#10](https://github.com/El-swaggerito/Nocturne/issues/10) will implement the restricted on-chain client. Do not forward a complete `InvoiceProposal` directly to a contract method.
+Issue [#6](https://github.com/El-swaggerito/Nocturne/issues/6) must confirm the final `request_payment` interface, request ID and invoice reference/hash format. Issue [#10](https://github.com/El-swaggerito/Nocturne/issues/10) adds a disabled-by-default restricted testnet client. Do not forward a complete `InvoiceProposal` directly to a contract method.
 
 For fixtures, error handling, field formats and detailed security notes, see [AGENT_UTILISATION.md](./AGENT_UTILISATION.md).
+
+
+## Issue #10: restricted payment proposal client (testnet only)
+
+The library exports `NearPaymentClient`, `loadNearPaymentConfig`, and
+`createNearTestnetTransport` from `src/index.ts`. `npm run smoke` is still
+**inference-only**. Nothing in the CLI broadcasts blockchain transactions.
+
+The payment client:
+
+1. Accepts only a strictly validated `InvoiceProposal`. It never calls the
+   model as part of transaction signing.
+2. Derives a stable invoice-scoped `request_id` and saves a private journal
+   entry on disk. Changed amounts or recipients with the same reference fail.
+3. Checks the **on-chain** access-key permissions before submission: it must
+   be a standard `FunctionCall` key restricted to the configured Guard account
+   and exactly the method `request_payment`. FullAccess, wildcard and extra
+   methods are rejected.
+4. Calls only the `request_payment` change method, attaches **zero deposit**,
+   and treats uncertain submissions as `pending`. No automatic resubmission
+   occurs after an attempt, including when RPC times out.
+5. Captures the transaction hash and finality when RPC returns them. A
+   transaction success is **not** confirmation that the asynchronous payment
+   settled. `confirmed` requires matching data from a contract status view.
+   The provisional read-only `get_payment` getter must match Issue #6.
+
+The **provisional**, not-yet-agreed method arguments are:
+
+```json
+{
+  "request_id": "req_<32-hex-chars>",
+  "recipient_id": "merchant.testnet",
+  "amount_yocto": "1500000000000000000000000",
+  "invoice_reference": "INV-2026-0001"
+}
+```
+
+The contract engineer must confirm all names and value representations under
+[Issue #6](https://github.com/El-swaggerito/Nocturne/issues/6) **before any
+real testnet transaction**. The payment interface may need adaptation.
+
+Copy `.env.example` to an ignored `.env` at repository root, and configure:
+
+- `NEAR_GUARD_ACCOUNT_ID`: deployed Guard **testnet** account
+- `NEAR_AGENT_ACCOUNT_ID`: dedicated agent **testnet** account
+- `NEAR_AGENT_PRIVATE_KEY`: **restricted** FunctionCall key in local `.env` only
+- `NEAR_PAYMENT_JOURNAL_DIR`: durable private journal path, default
+  `.local/payment-requests` relative to the process working directory
+
+Do not set `NEAR_ENABLE_TESTNET_WRITES=yes` or
+`NEAR_CONTRACT_INTERFACE_AGREED=yes` until the team has approved the testnet
+contract interface and Joe has reviewed the access key from Issue #4. Both
+flags must be set for the library to broadcast. Keep wallet signing keys on
+server-side machines only and never in frontend bundles.
+
+### Verification
+
+```sh
+cd agent
+npm install               # updates package-lock.json for near-api-js 7.4.0
+npm run typecheck
+npm test                  # includes near.test.ts with mock transport
+npm run smoke             # unchanged invoice-only smoke test
+```
+
+The tests use only fake keys and mock transport; no testnet transaction is sent.
+Before opening PR #10, commit the updated `agent/package-lock.json` after
+`npm install`. No `.env`, signing key or `.local` journal should be committed.
+
+### Retry and status limitations
+
+The request journal and attempt markers are persistent local data. Preserve
+and back them up before migrations. The ID is deterministic per network,
+contract account, agent account and invoice reference, but **never rely on
+local state alone to enforce idempotency**. The contract must reject duplicate
+request IDs on-chain. Retrying after a timeout returns the existing pending
+record and never broadcasts a second transaction. When the RPC returns no hash,
+a human must reconcile the transaction or inspect the on-chain contract audit
+trail before any further action.
+
+Issue #14 supplies the real negative-permission and testnet settlement evidence.
+Issue #10 alone cannot establish that on-chain owner-only methods are
+inaccessible or that money transfers settle correctly.
+
+### Library usage (only after contract and key approvals)
+
+This is an integration example, not a command run by the smoke test:
+
+```ts
+import {
+  extractInvoiceProposal,
+  loadNearPaymentConfig,
+  createNearTestnetTransport,
+  NearPaymentClient,
+} from "./src/index.js";
+
+const proposal = await extractInvoiceProposal(invoiceText);
+const client = new NearPaymentClient(
+  loadNearPaymentConfig(),
+  createNearTestnetTransport(),
+);
+const result = await client.submit(proposal);
+// result.status: prepared | ai_rejected | contract_rejected | pending | confirmed
+// A pending result is not a payment confirmation.
+```
+
+This client never supplies an owner key or exposes generic owner-only contract
+methods. The contract must independently validate the authorised agent,
+recipient and spending limits. The CLI's `npm run smoke` remains unchanged.
