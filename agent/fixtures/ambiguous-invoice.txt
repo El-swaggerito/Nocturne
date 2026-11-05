@@ -1,0 +1,5 @@
+SAMPLE INVOICE (fictional, ambiguous payee)
+Invoice ref: INV-2026-AMBIG-01
+Payee NEAR account: merchant.testnet
+Payee NEAR account: second-merchant.testnet
+Amount payable: 1.50 NEAR

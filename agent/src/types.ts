@@ -21,12 +21,13 @@ export const modelInvoiceSchema = z.strictObject({
   amount: z.string().nullable(),
   currency: z.string().nullable(),
   invoiceReference: z.string().nullable(),
+  supplierName: z.string().nullable().optional(),
   validationErrors: z.array(validationErrorSchema).max(12),
 });
 
 export type ModelInvoice = z.infer<typeof modelInvoiceSchema>;
 
-const nearAccountIdSchema = z
+export const nearAccountIdSchema = z
   .string()
   .min(2)
   .max(64)
@@ -39,6 +40,7 @@ export const invoiceProposalSchema = z.strictObject({
     .regex(/^[1-9][0-9]*$/, "Must be a positive integer decimal string")
     .refine((value) => BigInt(value) <= MAX_YOCTO_NEAR, "Exceeds NEAR u128 limit"),
   invoiceReference: z.string().trim().min(1).max(128),
+  supplierName: z.string().trim().min(1).max(128).optional(),
   validationErrors: z.tuple([]),
 });
 
@@ -139,6 +141,7 @@ export function parseInvoiceProposal(responseText: string): InvoiceProposal {
     recipient,
     amountYoctoNear: nearToYoctoNear(amount),
     invoiceReference,
+    ...(input.supplierName == null ? {} : { supplierName: input.supplierName }),
     validationErrors: [],
   });
   if (!proposal.success) {
