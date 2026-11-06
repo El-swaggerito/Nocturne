@@ -1,4 +1,10 @@
+mod policy;
+#[cfg(test)]
+mod policy_tests;
+
+use near_sdk::json_types::U128;
 use near_sdk::{AccountId, PanicOnDefault, env, near};
+use policy::{MAX_RECIPIENTS, PolicyError, check_payment, utc_day};
 
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
@@ -6,6 +12,18 @@ pub struct NocturneGuard {
     owner_id: AccountId,
     agent_id: AccountId,
     frozen: bool,
+    daily_limit: u128,
+    per_transaction_limit: u128,
+    approved_recipients: Vec<AccountId>,
+}
+
+#[near(serializers = [json])]
+pub struct PolicyView {
+    pub frozen: bool,
+    pub daily_limit: U128,
+    pub per_transaction_limit: U128,
+    pub approved_recipients: Vec<AccountId>,
+    pub current_utc_day: u64,
 }
 
 #[near]
@@ -24,6 +42,9 @@ impl NocturneGuard {
             owner_id,
             agent_id,
             frozen: false,
+            daily_limit: 0,
+            per_transaction_limit: 0,
+            approved_recipients: Vec::new(),
         }
     }
 
@@ -39,6 +60,66 @@ impl NocturneGuard {
         self.frozen
     }
 
+    pub fn set_limits(&mut self, daily_limit: U128, per_transaction_limit: U128) {
+        self.assert_owner();
+
+        assert!(daily_limit.0 > 0, "Daily limit must be positive");
+        assert!(
+            per_transaction_limit.0 > 0,
+            "Transaction limit must be positive"
+        );
+        assert!(
+            per_transaction_limit.0 <= daily_limit.0,
+            "Transaction limit exceeds daily limit"
+        );
+
+        self.daily_limit = daily_limit.0;
+        self.per_transaction_limit = per_transaction_limit.0;
+    }
+
+    pub fn add_approved_recipient(&mut self, recipient: AccountId) -> bool {
+        self.assert_owner();
+
+        if self.approved_recipients.contains(&recipient) {
+            return false;
+        }
+
+        assert!(
+            self.approved_recipients.len() < MAX_RECIPIENTS,
+            "Recipient limit reached"
+        );
+        self.approved_recipients.push(recipient);
+        true
+    }
+
+    pub fn remove_approved_recipient(&mut self, recipient: AccountId) -> bool {
+        self.assert_owner();
+
+        if let Some(index) = self
+            .approved_recipients
+            .iter()
+            .position(|id| id == &recipient)
+        {
+            self.approved_recipients.remove(index);
+            return true;
+        }
+        false
+    }
+
+    pub fn is_recipient_approved(&self, recipient: AccountId) -> bool {
+        self.approved_recipients.contains(&recipient)
+    }
+
+    pub fn get_policy(&self) -> PolicyView {
+        PolicyView {
+            frozen: self.frozen,
+            daily_limit: U128(self.daily_limit),
+            per_transaction_limit: U128(self.per_transaction_limit),
+            approved_recipients: self.approved_recipients.clone(),
+            current_utc_day: utc_day(env::block_timestamp_ms()),
+        }
+    }
+
     pub fn set_frozen(&mut self, frozen: bool) {
         self.assert_owner();
         self.frozen = frozen;
@@ -46,6 +127,26 @@ impl NocturneGuard {
 }
 
 impl NocturneGuard {
+    // Internal policy check only. Issue #6 must supply the
+    // authoritative on-chain daily committed amount, not
+    // a value provided by the agent or frontend.
+    #[allow(dead_code)]
+    fn validate_proposal(
+        &self,
+        recipient: &AccountId,
+        amount: u128,
+        committed_for_day: u128,
+    ) -> Result<(), PolicyError> {
+        check_payment(
+            self.frozen,
+            self.approved_recipients.contains(recipient),
+            amount,
+            self.daily_limit,
+            self.per_transaction_limit,
+            committed_for_day,
+        )
+    }
+
     fn assert_owner(&self) {
         assert_eq!(
             env::predecessor_account_id(),
