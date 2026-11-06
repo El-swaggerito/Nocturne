@@ -1,10 +1,19 @@
+mod payments;
+#[cfg(test)]
+mod payments_tests;
 mod policy;
 #[cfg(test)]
 mod policy_tests;
 
 use near_sdk::json_types::U128;
 use near_sdk::{AccountId, PanicOnDefault, env, near};
+use near_sdk::{Gas, NearToken, Promise, PromiseError};
+use payments::{
+    CALLBACK_GAS_TGAS, MAX_PAYMENTS, PaymentRecord, PaymentStatus, PaymentView,
+    SAFETY_RESERVE_YOCTO, SpendingView,
+};
 use policy::{MAX_RECIPIENTS, PolicyError, check_payment, utc_day};
+use std::collections::BTreeMap;
 
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
@@ -15,6 +24,10 @@ pub struct NocturneGuard {
     daily_limit: u128,
     per_transaction_limit: u128,
     approved_recipients: Vec<AccountId>,
+    payments: BTreeMap<String, PaymentRecord>,
+    pending_total: u128,
+    daily_day: u64,
+    daily_committed: u128,
 }
 
 #[near(serializers = [json])]
@@ -45,6 +58,10 @@ impl NocturneGuard {
             daily_limit: 0,
             per_transaction_limit: 0,
             approved_recipients: Vec::new(),
+            payments: BTreeMap::new(),
+            pending_total: 0,
+            daily_day: utc_day(env::block_timestamp_ms()),
+            daily_committed: 0,
         }
     }
 
@@ -117,6 +134,205 @@ impl NocturneGuard {
             per_transaction_limit: U128(self.per_transaction_limit),
             approved_recipients: self.approved_recipients.clone(),
             current_utc_day: utc_day(env::block_timestamp_ms()),
+        }
+    }
+
+    /// Agent-only, zero-deposit payment request.
+    /// Amount is a decimal string in JSON via U128.
+    pub fn request_payment(
+        &mut self,
+        request_id: String,
+        recipient_id: AccountId,
+        amount_yocto: U128,
+        invoice_reference: String,
+    ) -> Promise {
+        self.assert_agent();
+
+        assert_eq!(
+            env::attached_deposit().as_yoctonear(),
+            0,
+            "Payment request must have zero deposit"
+        );
+
+        let suffix = request_id.strip_prefix("req_");
+        assert!(
+            suffix.is_some_and(|s| {
+                s.len() == 32
+                    && s.bytes()
+                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            }),
+            "Invalid request ID"
+        );
+
+        assert!(
+            !invoice_reference.is_empty()
+                && invoice_reference.len() <= 128
+                && invoice_reference.bytes().all(|b| b.is_ascii_graphic()),
+            "Invalid invoice reference"
+        );
+
+        assert!(
+            !self.payments.contains_key(&request_id),
+            "Duplicate request ID"
+        );
+
+        assert!(
+            self.payments.len() < MAX_PAYMENTS,
+            "Payment history capacity reached"
+        );
+
+        let today = utc_day(env::block_timestamp_ms());
+        let used = if self.daily_day == today {
+            self.daily_committed
+        } else {
+            0
+        };
+
+        self.validate_proposal(&recipient_id, amount_yocto.0, used)
+            .unwrap_or_else(|error| env::panic_str(&format!("Policy rejected: {error:?}")));
+
+        // Conservative balance check. The fixed margin protects
+        // future storage growth and callback execution.
+        let storage_reserve = u128::from(env::storage_usage())
+            .checked_mul(env::storage_byte_cost().as_yoctonear())
+            .and_then(|n| n.checked_add(SAFETY_RESERVE_YOCTO))
+            .expect("Storage reserve overflow");
+
+        let required = self
+            .pending_total
+            .checked_add(amount_yocto.0)
+            .and_then(|n| n.checked_add(storage_reserve))
+            .expect("Balance reservation overflow");
+
+        assert!(
+            required <= env::account_balance().as_yoctonear(),
+            "Insufficient unreserved treasury balance"
+        );
+
+        let updated_used = used
+            .checked_add(amount_yocto.0)
+            .expect("Daily allowance overflow");
+
+        let updated_pending = self
+            .pending_total
+            .checked_add(amount_yocto.0)
+            .expect("Pending balance overflow");
+
+        self.daily_day = today;
+        self.daily_committed = updated_used;
+        self.pending_total = updated_pending;
+
+        self.payments.insert(
+            request_id.clone(),
+            PaymentRecord {
+                recipient_id: recipient_id.clone(),
+                amount: amount_yocto.0,
+                invoice_reference,
+                utc_day: today,
+                status: PaymentStatus::Pending,
+            },
+        );
+
+        env::log_str(&format!("payment_pending:{request_id}"));
+
+        Promise::new(recipient_id)
+            .transfer(NearToken::from_yoctonear(amount_yocto.0))
+            .then(
+                Self::ext(env::current_account_id())
+                    .with_static_gas(Gas::from_tgas(CALLBACK_GAS_TGAS))
+                    .on_payment_complete(request_id),
+            )
+    }
+
+    /// Called only by the contract after the transfer result.
+    #[private]
+    pub fn on_payment_complete(
+        &mut self,
+        request_id: String,
+        #[callback_result] result: Result<(), PromiseError>,
+    ) -> bool {
+        assert_eq!(
+            env::predecessor_account_id(),
+            env::current_account_id(),
+            "Only the contract can settle payments"
+        );
+
+        let (amount, payment_day) = {
+            let Some(payment) = self.payments.get(&request_id) else {
+                return false;
+            };
+
+            if payment.status != PaymentStatus::Pending {
+                return false;
+            }
+
+            (payment.amount, payment.utc_day)
+        };
+
+        self.pending_total = self
+            .pending_total
+            .checked_sub(amount)
+            .expect("Pending accounting underflow");
+
+        let today = utc_day(env::block_timestamp_ms());
+
+        if self.daily_day != today {
+            self.daily_day = today;
+            self.daily_committed = 0;
+        }
+
+        let succeeded = result.is_ok();
+
+        if !succeeded && payment_day == today {
+            self.daily_committed = self
+                .daily_committed
+                .checked_sub(amount)
+                .expect("Daily accounting underflow");
+        }
+
+        let payment = self
+            .payments
+            .get_mut(&request_id)
+            .expect("Payment disappeared");
+
+        payment.status = if succeeded {
+            PaymentStatus::Confirmed
+        } else {
+            PaymentStatus::Failed
+        };
+
+        env::log_str(&format!("payment_{}:{request_id}", payment.status.as_str()));
+
+        true
+    }
+
+    pub fn get_payment(&self, request_id: String) -> Option<PaymentView> {
+        self.payments.get(&request_id).map(|payment| PaymentView {
+            request_id,
+            recipient_id: payment.recipient_id.clone(),
+            amount_yocto: U128(payment.amount),
+            invoice_reference: payment.invoice_reference.clone(),
+            utc_day: payment.utc_day,
+            status: payment.status.as_str().to_string(),
+        })
+    }
+
+    pub fn get_spending(&self) -> SpendingView {
+        let today = utc_day(env::block_timestamp_ms());
+
+        let used = if self.daily_day == today {
+            self.daily_committed
+        } else {
+            0
+        };
+
+        SpendingView {
+            utc_day: today,
+            daily_committed: U128(used),
+            pending_total: U128(self.pending_total),
+            daily_limit: U128(self.daily_limit),
+            remaining_daily: U128(self.daily_limit.saturating_sub(used)),
+            recorded_payments: self.payments.len() as u64,
         }
     }
 
