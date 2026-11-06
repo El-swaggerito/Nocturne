@@ -1,0 +1,6 @@
+SAMPLE INVOICE (fictional, Nocturne demo scenario 4)
+Invoice ref: DEMO-S4-0001
+Supplier: Northstar Test Services
+Payee NEAR account: nocturne-merchant.testnet
+Amount payable: 0.50 NEAR
+Purpose: Support hours
