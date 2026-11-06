@@ -4,6 +4,8 @@ mod payments_tests;
 mod policy;
 #[cfg(test)]
 mod policy_tests;
+#[cfg(test)]
+mod security_tests;
 
 use near_sdk::json_types::U128;
 use near_sdk::{AccountId, PanicOnDefault, env, near};
