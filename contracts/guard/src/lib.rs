@@ -27,6 +27,7 @@ pub struct NocturneGuard {
     per_transaction_limit: u128,
     approved_recipients: Vec<AccountId>,
     payments: BTreeMap<String, PaymentRecord>,
+    next_request_nonce: u128,
     pending_total: u128,
     daily_day: u64,
     daily_committed: u128,
@@ -61,6 +62,7 @@ impl NocturneGuard {
             per_transaction_limit: 0,
             approved_recipients: Vec::new(),
             payments: BTreeMap::new(),
+            next_request_nonce: 1,
             pending_total: 0,
             daily_day: utc_day(env::block_timestamp_ms()),
             daily_committed: 0,
@@ -77,6 +79,10 @@ impl NocturneGuard {
 
     pub fn is_frozen(&self) -> bool {
         self.frozen
+    }
+
+    pub fn get_next_request_id(&self) -> String {
+        format!("req_{:032x}", self.next_request_nonce)
     }
 
     pub fn set_limits(&mut self, daily_limit: U128, per_transaction_limit: U128) {
@@ -177,14 +183,12 @@ impl NocturneGuard {
             "Invalid invoice reference"
         );
 
-        assert!(
-            !self.payments.contains_key(&request_id),
-            "Duplicate request ID"
-        );
+        let request_nonce = u128::from_str_radix(suffix.expect("validated request ID"), 16)
+            .expect("Invalid request ID");
 
-        assert!(
-            self.payments.len() < MAX_PAYMENTS,
-            "Payment history capacity reached"
+        assert_eq!(
+            request_nonce, self.next_request_nonce,
+            "Unexpected request nonce"
         );
 
         let today = utc_day(env::block_timestamp_ms());
@@ -214,6 +218,25 @@ impl NocturneGuard {
             "Insufficient unreserved treasury balance"
         );
 
+        let settled_to_prune = if self.payments.len() >= MAX_PAYMENTS {
+            self.payments
+                .iter()
+                .find(|(_, payment)| payment.status != PaymentStatus::Pending)
+                .map(|(request_id, _)| request_id.clone())
+        } else {
+            None
+        };
+
+        assert!(
+            self.payments.len() < MAX_PAYMENTS || settled_to_prune.is_some(),
+            "Payment history full of pending payments"
+        );
+
+        let updated_nonce = self
+            .next_request_nonce
+            .checked_add(1)
+            .expect("Request nonce exhausted");
+
         let updated_used = used
             .checked_add(amount_yocto.0)
             .expect("Daily allowance overflow");
@@ -226,6 +249,11 @@ impl NocturneGuard {
         self.daily_day = today;
         self.daily_committed = updated_used;
         self.pending_total = updated_pending;
+        self.next_request_nonce = updated_nonce;
+
+        if let Some(request_id) = settled_to_prune {
+            self.payments.remove(&request_id);
+        }
 
         self.payments.insert(
             request_id.clone(),
