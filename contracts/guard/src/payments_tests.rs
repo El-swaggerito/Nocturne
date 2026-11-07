@@ -64,7 +64,7 @@ fn concurrent_requests_cannot_exceed_daily_cap() {
 }
 
 #[test]
-#[should_panic(expected = "Duplicate request ID")]
+#[should_panic(expected = "Unexpected request nonce")]
 fn duplicate_request_id_is_rejected() {
     let mut guard = guard();
     request(&mut guard, 1, ONE_NEAR);
@@ -224,7 +224,7 @@ fn day_rollover_resets_daily_usage_not_pending_total() {
 }
 
 #[test]
-#[should_panic(expected = "Duplicate request ID")]
+#[should_panic(expected = "Unexpected request nonce")]
 fn settled_request_id_cannot_be_replayed() {
     let mut guard = guard();
     request(&mut guard, 1, ONE_NEAR);
