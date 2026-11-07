@@ -99,6 +99,10 @@ impl NocturneGuard {
     pub fn add_approved_recipient(&mut self, recipient: AccountId) -> bool {
         self.assert_owner();
 
+        if recipient == env::current_account_id() || recipient == self.agent_id {
+            return false;
+        }
+
         if self.approved_recipients.contains(&recipient) {
             return false;
         }
@@ -200,10 +204,9 @@ impl NocturneGuard {
             .and_then(|n| n.checked_add(SAFETY_RESERVE_YOCTO))
             .expect("Storage reserve overflow");
 
-        let required = self
-            .pending_total
-            .checked_add(amount_yocto.0)
-            .and_then(|n| n.checked_add(storage_reserve))
+        let required = amount_yocto
+            .0
+            .checked_add(storage_reserve)
             .expect("Balance reservation overflow");
 
         assert!(

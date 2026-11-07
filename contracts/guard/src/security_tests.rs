@@ -13,11 +13,15 @@ fn account(id: &str) -> AccountId {
 }
 
 fn context(caller: &str) {
+    context_with_balance(caller, 100 * ONE_NEAR);
+}
+
+fn context_with_balance(caller: &str, balance: u128) {
     let mut builder = VMContextBuilder::new();
     builder
         .current_account_id(account("guard.testnet"))
         .predecessor_account_id(account(caller))
-        .account_balance(NearToken::from_yoctonear(100 * ONE_NEAR));
+        .account_balance(NearToken::from_yoctonear(balance));
     testing_env!(builder.build());
 }
 
@@ -56,11 +60,43 @@ fn finding_f1_settled_history_does_not_brick_guard() {
 }
 
 #[test]
-#[ignore = "F3: owner can approve the Guard itself or the agent as a recipient"]
 fn finding_f3_self_and_agent_cannot_be_approved() {
     let mut guard = guard();
     assert!(!guard.add_approved_recipient(account("guard.testnet")));
     assert!(!guard.add_approved_recipient(account("agent.testnet")));
+}
+
+#[test]
+fn finding_f2_pending_total_is_not_double_counted_against_balance() {
+    let mut guard = guard();
+
+    context("agent.testnet");
+    let _ = guard.request_payment(
+        format!("req_{:032x}", 1),
+        account("merchant.testnet"),
+        U128(4 * ONE_NEAR),
+        "INV-1".to_string(),
+    );
+
+    assert_eq!(guard.get_spending().pending_total.0, 4 * ONE_NEAR);
+
+    let storage_reserve = u128::from(near_sdk::env::storage_usage())
+        .checked_mul(near_sdk::env::storage_byte_cost().as_yoctonear())
+        .and_then(|n| n.checked_add(ONE_NEAR))
+        .expect("storage reserve calculation overflow");
+
+    let second_payment = ONE_NEAR;
+
+    context_with_balance("agent.testnet", storage_reserve + second_payment);
+
+    let _ = guard.request_payment(
+        format!("req_{:032x}", 2),
+        account("merchant.testnet"),
+        U128(second_payment),
+        "INV-2".to_string(),
+    );
+
+    assert_eq!(guard.get_spending().pending_total.0, 5 * ONE_NEAR);
 }
 
 #[test]
