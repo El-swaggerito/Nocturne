@@ -1,5 +1,6 @@
 [workspace]
 members = ["contracts/guard", "integration-tests"]
+default-members = ["contracts/guard"]
 resolver = "2"
 
 [profile.release]
