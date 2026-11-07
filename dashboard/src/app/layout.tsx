@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { WalletProvider } from "@/context/wallet-context";
 import { inter, jetBrainsMono } from "@/lib/fonts";
 
+import "@near-wallet-selector/modal-ui/styles.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +26,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
       lang="en"
       className={`${inter.variable} ${jetBrainsMono.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <WalletProvider>{children}</WalletProvider>
+      </body>
     </html>
   );
 }

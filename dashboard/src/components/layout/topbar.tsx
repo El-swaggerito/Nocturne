@@ -1,4 +1,6 @@
-import { Bell, ShieldCheck, UserRound, WalletCards } from "lucide-react";
+import { Bell, ShieldCheck, UserRound } from "lucide-react";
+
+import { WalletConnect } from "@/components/wallet/wallet-connect";
 
 type TopbarProps = {
   title: string;
@@ -41,15 +43,7 @@ export function Topbar({
           <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary" />
         </button>
 
-        <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5">
-          <WalletCards size={14} className="text-cyan" />
-          <span className="hidden text-[10px] uppercase tracking-wider text-muted xl:inline">
-            Owner
-          </span>
-          <span className="font-technical text-[10px]">
-            owner.nocturne.testnet
-          </span>
-        </div>
+        <WalletConnect />
 
         <div className="flex size-8 items-center justify-center rounded-full bg-primary text-white">
           <UserRound size={16} />
