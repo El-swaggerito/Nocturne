@@ -28,7 +28,7 @@ export function TreasuryCard({
             </h2>
           </div>
 
-          <Badge variant="cyan">Demo Data</Badge>
+          <Badge variant="cyan">Live RPC</Badge>
         </div>
 
         <div className="mt-6 flex items-baseline gap-2">
@@ -41,7 +41,7 @@ export function TreasuryCard({
 
         <div className="mt-5 space-y-2 rounded-control border border-border bg-background/70 p-3">
           <div className="flex items-center justify-between gap-4">
-            <span className="text-xs text-muted">Spendable Balance</span>
+            <span className="text-xs text-muted">Remaining Daily Allowance</span>
             <span className="font-technical text-[11px]">
               {spendable} NEAR
             </span>
@@ -58,7 +58,7 @@ export function TreasuryCard({
 
       <div className="mt-5 flex items-center gap-2 border-t border-border pt-4 text-xs text-muted">
         <ShieldCheck size={14} className="text-cyan" />
-        <span>Smart Contract Guard Active</span>
+        <span>Guard account state from NEAR RPC</span>
       </div>
     </Card>
   );

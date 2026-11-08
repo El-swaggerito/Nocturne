@@ -8,54 +8,71 @@ import {
 } from "@/components/payments/payment-filters";
 import { PaymentInspector } from "@/components/payments/payment-inspector";
 import { PaymentTable } from "@/components/payments/payment-table";
-import {
-  paymentRecords,
-  type DemoPaymentRecord,
-} from "@/data/demo-payments";
+import type { PaymentView } from "@/lib/contract-types";
 
-export function PaymentsWorkspace() {
+export function PaymentsWorkspace({
+  records = [],
+}: {
+  records?: PaymentView[];
+}) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] =
     useState<PaymentFilter>("all");
-
-  const [selected, setSelected] =
-    useState<DemoPaymentRecord | null>(paymentRecords[0] ?? null);
+  const [selectedId, setSelectedId] =
+    useState<string | null>(null);
 
   const counts = useMemo(
     () => ({
-      all: paymentRecords.length,
-      confirmed: paymentRecords.filter(
+      all: records.length,
+      confirmed: records.filter(
         (item) => item.status === "confirmed",
       ).length,
-      pending: paymentRecords.filter(
+      pending: records.filter(
         (item) => item.status === "pending",
       ).length,
-      failed: paymentRecords.filter(
+      failed: records.filter(
         (item) => item.status === "failed",
       ).length,
-      "policy-rejected": paymentRecords.filter(
-        (item) => item.status === "policy-rejected",
-      ).length,
     }),
-    [],
+    [records],
   );
 
   const filtered = useMemo(() => {
     const normalised = query.trim().toLowerCase();
 
-    return paymentRecords.filter((record) => {
+    return records.filter((record) => {
+      const recordStatus =
+        record.status === "confirmed"
+          ? "confirmed"
+          : record.status === "pending"
+            ? "pending"
+            : "failed";
+
       const statusMatch =
-        filter === "all" || record.status === filter;
+        filter === "all" || recordStatus === filter;
 
       const queryMatch =
         !normalised ||
-        record.requestId.toLowerCase().includes(normalised) ||
-        record.invoiceReference.toLowerCase().includes(normalised) ||
-        record.recipient.toLowerCase().includes(normalised);
+        record.request_id
+          .toLowerCase()
+          .includes(normalised) ||
+        record.invoice_reference
+          .toLowerCase()
+          .includes(normalised) ||
+        record.recipient_id
+          .toLowerCase()
+          .includes(normalised);
 
       return statusMatch && queryMatch;
     });
-  }, [filter, query]);
+  }, [filter, query, records]);
+
+  const selected =
+    records.find(
+      (record) => record.request_id === selectedId,
+    ) ??
+    records[0] ??
+    null;
 
   return (
     <div className="space-y-4">
@@ -71,8 +88,10 @@ export function PaymentsWorkspace() {
         <div className="w-full min-w-0 flex-1">
           <PaymentTable
             records={filtered}
-            selectedId={selected?.requestId ?? null}
-            onSelect={setSelected}
+            selectedId={selected?.request_id ?? null}
+            onSelect={(record) =>
+              setSelectedId(record.request_id)
+            }
           />
         </div>
 

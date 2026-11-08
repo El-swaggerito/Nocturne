@@ -10,6 +10,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { useGuardState } from "@/hooks/use-guard-state";
 import { cn } from "@/lib/utils";
 
 export type AppSection =
@@ -57,6 +58,30 @@ export function Sidebar({
 }: {
   activeSection: AppSection;
 }) {
+  const {
+    data,
+    configured,
+    loading,
+  } = useGuardState();
+
+  const freezeLabel = !configured
+    ? "UNKNOWN"
+    : loading && !data
+      ? "LOADING"
+      : data
+        ? data.policy.frozen
+          ? "FROZEN"
+          : "UNFROZEN"
+        : "UNAVAILABLE";
+
+  const freezeMessage = !configured
+    ? "Configure the Guard contract to read live freeze state."
+    : data?.policy.frozen
+      ? "New payment requests are blocked by contract policy."
+      : data
+        ? "New payment requests are accepted subject to policy."
+        : "Live Guard state is unavailable.";
+
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col border-r border-border bg-card lg:flex">
       <div className="flex h-16 items-center gap-3 border-b border-border px-4">
@@ -65,7 +90,10 @@ export function Sidebar({
         </div>
 
         <div className="min-w-0">
-          <p className="text-sm font-semibold tracking-tight">NOCTURNE</p>
+          <p className="text-sm font-semibold tracking-tight">
+            NOCTURNE
+          </p>
+
           <p className="font-technical text-[9px] uppercase tracking-[0.18em] text-muted">
             NEAR Treasury Core
           </p>
@@ -107,21 +135,24 @@ export function Sidebar({
               Freeze Status
             </span>
 
-            <span className="font-technical text-[10px] text-cyan">
-              UNFROZEN
+            <span
+              className={cn(
+                "font-technical text-[10px]",
+                data?.policy.frozen
+                  ? "text-danger"
+                  : "text-cyan",
+              )}
+            >
+              {freezeLabel}
             </span>
           </div>
 
           <p className="mt-2 text-[11px] leading-4 text-muted">
-            New payment requests are accepted subject to policy.
+            {freezeMessage}
           </p>
         </div>
 
-        <div className="mt-3 flex items-center justify-between px-1">
-          <span className="font-technical text-[10px] text-faint">
-            Demo UI
-          </span>
-
+        <div className="mt-3 flex items-center justify-end px-1">
           <span className="inline-flex items-center gap-1.5 font-technical text-[10px] text-cyan">
             <span className="size-1.5 rounded-full bg-cyan" />
             Testnet
