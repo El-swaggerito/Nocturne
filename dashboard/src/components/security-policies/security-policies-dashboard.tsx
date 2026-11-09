@@ -7,7 +7,9 @@ import {
 } from "lucide-react";
 
 import { SecurityPoliciesWorkspace } from "@/components/security-policies/security-policies-workspace";
+import { useWallet } from "@/context/wallet-context";
 import { useGuardState } from "@/hooks/use-guard-state";
+import { getOwnerAccessState } from "@/lib/owner-access";
 
 function StateNotice({
   title,
@@ -53,10 +55,17 @@ function StateNotice({
 
 export function SecurityPoliciesDashboard() {
   const {
+    accountId,
+    loading: walletLoading,
+    selector,
+  } = useWallet();
+
+  const {
     data,
     configured,
     loading,
     error,
+    refresh,
   } = useGuardState();
 
   if (!configured) {
@@ -92,12 +101,23 @@ export function SecurityPoliciesDashboard() {
     );
   }
 
+  const ownerAccess = getOwnerAccessState({
+    accountId,
+    ownerId: data.owner,
+    guardAvailable: true,
+  });
+
   return (
     <SecurityPoliciesWorkspace
       owner={data.owner}
       agent={data.agent}
       policy={data.policy}
       spending={data.spending}
+      ownerAccess={ownerAccess}
+      walletLoading={walletLoading}
+      connectedAccountId={accountId}
+      selector={selector}
+      refresh={refresh}
     />
   );
 }

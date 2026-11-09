@@ -31,7 +31,7 @@ const provider = new JsonRpcProvider({
   url: nearConfig.nodeUrl,
 });
 
-function requireContractId() {
+export function requireContractId() {
   if (!nearConfig.contractId) {
     throw new Error(
       "NEXT_PUBLIC_GUARD_CONTRACT_ID is not configured",
