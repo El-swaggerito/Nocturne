@@ -45,3 +45,28 @@ export function percentageOfLimit(
     Number(basisPoints) / 100,
   );
 }
+
+export function parseNearToYoctoNear(value: string): string {
+  const input = value.trim();
+
+  if (!/^(?:0|[1-9]\d*)(?:\.\d{1,24})?$/.test(input)) {
+    throw new Error("Invalid NEAR amount");
+  }
+
+  const [wholePart, fractionPart = ""] = input.split(".");
+
+  const whole = BigInt(wholePart);
+  const fraction = BigInt(
+    fractionPart.padEnd(24, "0") || "0",
+  );
+
+  const yocto =
+    whole * YOCTO_PER_NEAR +
+    fraction;
+
+  if (yocto <= BigInt(0)) {
+    throw new Error("NEAR amount must be greater than zero");
+  }
+
+  return yocto.toString();
+}

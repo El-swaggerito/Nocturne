@@ -1,39 +1,64 @@
 import {
   CheckCircle2,
+  CircleHelp,
   CircleX,
   ShieldCheck,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import type { InvoiceSample } from "@/data/demo-ai-agent";
+import type { InvoiceAnalysisResult } from "@/lib/agent-api";
+import type {
+  PolicyView,
+  SpendingView,
+} from "@/lib/contract-types";
+import { formatYoctoNear } from "@/lib/format-near";
+
+type CheckState = "pass" | "reject" | "unknown";
 
 type CheckRowProps = {
   label: string;
   detail: string;
-  passed: boolean;
+  state: CheckState;
 };
 
 function CheckRow({
   label,
   detail,
-  passed,
+  state,
 }: CheckRowProps) {
+  const passed = state === "pass";
+  const rejected = state === "reject";
+
   return (
     <div className="flex items-start justify-between gap-3 rounded bg-card p-2.5">
       <div className="flex min-w-0 items-start gap-2">
         {passed ? (
-          <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-cyan" />
+          <CheckCircle2
+            size={15}
+            className="mt-0.5 shrink-0 text-cyan"
+          />
+        ) : rejected ? (
+          <CircleX
+            size={15}
+            className="mt-0.5 shrink-0 text-danger"
+          />
         ) : (
-          <CircleX size={15} className="mt-0.5 shrink-0 text-danger" />
+          <CircleHelp
+            size={15}
+            className="mt-0.5 shrink-0 text-muted"
+          />
         )}
 
         <div className="min-w-0">
-          <p className="text-[11px] font-medium">{label}</p>
+          <p className="text-[11px] font-medium">
+            {label}
+          </p>
+
           <p
             className={
-              passed
-                ? "font-technical mt-0.5 break-words text-[9px] text-muted"
-                : "font-technical mt-0.5 break-words text-[9px] text-danger"
+              rejected
+                ? "font-technical mt-0.5 break-words text-[9px] text-danger"
+                : "font-technical mt-0.5 break-words text-[9px] text-muted"
             }
           >
             {detail}
@@ -45,23 +70,98 @@ function CheckRow({
         className={
           passed
             ? "text-[9px] font-semibold uppercase text-cyan"
-            : "text-[9px] font-semibold uppercase text-danger"
+            : rejected
+              ? "text-[9px] font-semibold uppercase text-danger"
+              : "text-[9px] font-semibold uppercase text-muted"
         }
       >
-        {passed ? "Pass" : "Reject"}
+        {passed
+          ? "Pass"
+          : rejected
+            ? "Reject"
+            : "Unknown"}
       </span>
     </div>
   );
 }
 
 export function ContractChecks({
-  sample,
+  analysis,
+  configured,
+  loading,
+  error,
+  policy,
+  spending,
 }: {
-  sample: InvoiceSample;
+  analysis: InvoiceAnalysisResult | null;
+  configured: boolean;
+  loading: boolean;
+  error: string | null;
+  policy: PolicyView | null;
+  spending: SpendingView | null;
 }) {
+  const proposal =
+    analysis?.status === "proposal"
+      ? analysis.proposal
+      : null;
+
+  const guardReady =
+    configured &&
+    !loading &&
+    !error &&
+    policy !== null &&
+    spending !== null;
+
+  const amountYocto = proposal
+    ? BigInt(proposal.amountYocto)
+    : null;
+
+  const recipientApproved =
+    proposal && policy
+      ? policy.approved_recipients.includes(
+          proposal.recipientId,
+        )
+      : null;
+
+  const withinTransactionLimit =
+    amountYocto !== null && policy
+      ? amountYocto <=
+        BigInt(policy.per_transaction_limit)
+      : null;
+
+  const withinDailyAllowance =
+    amountYocto !== null && spending
+      ? amountYocto <=
+        BigInt(spending.remaining_daily)
+      : null;
+
+  const unfrozen = policy
+    ? !policy.frozen
+    : null;
+
   const accepted =
-    sample.recipientApproved &&
-    sample.withinTransactionLimit;
+    guardReady &&
+    proposal !== null &&
+    recipientApproved === true &&
+    withinTransactionLimit === true &&
+    withinDailyAllowance === true &&
+    unfrozen === true;
+
+  const rejected =
+    guardReady &&
+    proposal !== null &&
+    (
+      recipientApproved === false ||
+      withinTransactionLimit === false ||
+      withinDailyAllowance === false ||
+      unfrozen === false
+    );
+
+  const badge = accepted
+    ? "Policy Eligible"
+    : rejected
+      ? "Policy Rejected"
+      : "Awaiting Live Check";
 
   return (
     <section className="flex min-h-[590px] flex-col gap-4 rounded-card border border-border bg-card p-4">
@@ -70,66 +170,134 @@ export function ContractChecks({
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
             Stage 03
           </span>
+
           <h2 className="text-[15px] font-semibold">
             Contract Policy Checks
           </h2>
         </div>
 
-        <Badge variant={accepted ? "cyan" : "danger"}>
-          {accepted ? "Policy Eligible" : "Policy Rejected"}
+        <Badge
+          variant={
+            rejected
+              ? "danger"
+              : accepted
+                ? "cyan"
+                : "warning"
+          }
+        >
+          {badge}
         </Badge>
       </div>
 
-      <p className="text-[11px] text-muted">
-        Guard contract:{" "}
-        <code className="font-technical text-primary">
-          nocturne-guard.testnet
-        </code>
-      </p>
+      {!configured ? (
+        <p className="text-[11px] text-muted">
+          Guard contract is not configured. No live policy
+          decision can be shown.
+        </p>
+      ) : error ? (
+        <p className="text-[11px] text-danger">
+          Live Guard state could not be loaded: {error}
+        </p>
+      ) : loading ? (
+        <p className="text-[11px] text-muted">
+          Loading live Guard policy from NEAR RPC.
+        </p>
+      ) : !proposal ? (
+        <p className="text-[11px] text-muted">
+          Analyse an invoice to produce a proposal before
+          policy checks can be evaluated.
+        </p>
+      ) : null}
 
       <div className="space-y-2 rounded-control bg-elevated p-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
-          Authoritative Policy Checks
+          Live Policy Evaluation
         </p>
 
         <CheckRow
           label="Recipient Allowlist"
           detail={
-            sample.recipientApproved
-              ? `${sample.recipientId} is approved`
-              : `${sample.recipientId} is not approved`
+            proposal && policy
+              ? recipientApproved
+                ? proposal.recipientId +
+                  " is currently approved"
+                : proposal.recipientId +
+                  " is not currently approved"
+              : "Live allowlist comparison unavailable"
           }
-          passed={sample.recipientApproved}
+          state={
+            recipientApproved === null
+              ? "unknown"
+              : recipientApproved
+                ? "pass"
+                : "reject"
+          }
         />
 
         <CheckRow
           label="Per-Transaction Limit"
-          detail={`${sample.amountNear} NEAR ${
-            sample.withinTransactionLimit ? "≤" : ">"
-          } 5.00 NEAR`}
-          passed={sample.withinTransactionLimit}
+          detail={
+            proposal && policy
+              ? proposal.amountNear +
+                " NEAR compared with current limit " +
+                formatYoctoNear(
+                  policy.per_transaction_limit,
+                ) +
+                " NEAR"
+              : "Live transaction limit comparison unavailable"
+          }
+          state={
+            withinTransactionLimit === null
+              ? "unknown"
+              : withinTransactionLimit
+                ? "pass"
+                : "reject"
+          }
         />
 
         <CheckRow
           label="UTC Daily Allowance"
           detail={
-            accepted
-              ? "Current demo allowance can accommodate this proposal"
-              : "Proposal must still satisfy remaining UTC daily allowance"
+            proposal && spending
+              ? proposal.amountNear +
+                " NEAR compared with remaining allowance " +
+                formatYoctoNear(
+                  spending.remaining_daily,
+                ) +
+                " NEAR"
+              : "Live daily allowance comparison unavailable"
           }
-          passed={accepted}
+          state={
+            withinDailyAllowance === null
+              ? "unknown"
+              : withinDailyAllowance
+                ? "pass"
+                : "reject"
+          }
         />
 
         <CheckRow
           label="Freeze Status"
-          detail="Contract state: Unfrozen"
-          passed
+          detail={
+            policy
+              ? policy.frozen
+                ? "Guard is currently frozen"
+                : "Guard is currently unfrozen"
+              : "Live freeze state unavailable"
+          }
+          state={
+            unfrozen === null
+              ? "unknown"
+              : unfrozen
+                ? "pass"
+                : "reject"
+          }
         />
 
         <CheckRow
           label="Agent Permission"
-          detail="Restricted function-call access: request_payment"
-          passed
+          detail="Restricted agent-key permissions are verified separately during testnet integration."
+          state="unknown"
         />
       </div>
 
@@ -137,44 +305,64 @@ export function ContractChecks({
         <div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-              Payment Result
+              Evaluation Result
             </span>
 
-            <Badge variant={accepted ? "warning" : "danger"}>
-              {accepted ? "Ready to Submit" : "Policy Rejected"}
+            <Badge
+              variant={
+                rejected
+                  ? "danger"
+                  : accepted
+                    ? "warning"
+                    : "warning"
+              }
+            >
+              {accepted
+                ? "Eligible Proposal"
+                : rejected
+                  ? "Would Be Rejected"
+                  : "Not Evaluated"}
             </Badge>
           </div>
 
           <div className="font-technical mt-4 space-y-2 text-[10px]">
             <div className="flex justify-between gap-4">
-              <span className="text-muted">Request ID</span>
-              <span className="max-w-[65%] truncate">{sample.requestId}</span>
-            </div>
-
-            <div className="flex justify-between gap-4">
-              <span className="text-muted">Settlement</span>
+              <span className="text-muted">
+                Proposal
+              </span>
               <span>
-                {accepted
-                  ? "Not yet submitted"
-                  : "No transfer scheduled"}
+                {proposal
+                  ? "Extracted"
+                  : "None"}
               </span>
             </div>
 
             <div className="flex justify-between gap-4">
-              <span className="text-muted">Persistent contract record</span>
-              <span>
-                {accepted
-                  ? "None yet"
-                  : "None for policy rejection"}
+              <span className="text-muted">
+                Transaction submitted
               </span>
+              <span>No</span>
+            </div>
+
+            <div className="flex justify-between gap-4">
+              <span className="text-muted">
+                On-chain payment record
+              </span>
+              <span>None created by this screen</span>
             </div>
           </div>
         </div>
 
         <div className="mt-5 flex items-start gap-2 border-t border-border pt-4 text-[10px] leading-4 text-muted">
-          <ShieldCheck size={14} className="mt-0.5 shrink-0 text-cyan" />
+          <ShieldCheck
+            size={14}
+            className="mt-0.5 shrink-0 text-cyan"
+          />
+
           <p>
-            Demo evaluation only. No transaction has been signed or submitted.
+            This is a client-side preview using live Guard
+            state. The contract remains authoritative when
+            request_payment is actually called.
           </p>
         </div>
       </div>
