@@ -2,10 +2,13 @@
 
 import { Search, X } from "lucide-react";
 
-import type { PaymentUiStatus } from "@/data/demo-payments";
 import { cn } from "@/lib/utils";
 
-export type PaymentFilter = "all" | PaymentUiStatus;
+export type PaymentFilter =
+  | "all"
+  | "confirmed"
+  | "pending"
+  | "failed";
 
 type PaymentFiltersProps = {
   query: string;
@@ -23,7 +26,6 @@ const options: Array<{
   { id: "confirmed", label: "Confirmed" },
   { id: "pending", label: "Pending" },
   { id: "failed", label: "Failed" },
-  { id: "policy-rejected", label: "Policy Rejected" },
 ];
 
 export function PaymentFilters({

@@ -1,20 +1,13 @@
-import { LockKeyhole, LockOpen } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-
-type FreezeCardProps = {
-  frozen: boolean;
-  onFreeze: () => void;
-  onUnfreeze: () => void;
-};
 
 export function FreezeCard({
   frozen,
-  onFreeze,
-  onUnfreeze,
-}: FreezeCardProps) {
+}: {
+  frozen: boolean;
+}) {
   return (
     <Card className="p-5">
       <div className="flex items-start justify-between gap-3">
@@ -41,41 +34,20 @@ export function FreezeCard({
 
       <div className="mt-5 space-y-2 rounded-control bg-background p-4">
         <p className="text-xs font-medium leading-5">
-          Freezing Nocturne blocks new payment requests.
+          {frozen
+            ? "New payment requests are currently blocked."
+            : "New payment requests may be evaluated against policy."}
         </p>
 
         <p className="text-[10px] leading-4 text-muted">
-          It does not cancel transfers already scheduled before the freeze,
-          revoke the agent function-call key, or reverse confirmed payments.
-        </p>
-
-        <p className="font-technical text-[9px] text-primary">
-          Contract method: set_frozen({frozen ? "false" : "true"})
+          Freezing does not cancel transfers already scheduled before the
+          freeze, revoke the agent function-call key, or reverse confirmed
+          payments.
         </p>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Button
-          variant="danger"
-          disabled={frozen}
-          onClick={onFreeze}
-        >
-          <LockKeyhole size={14} />
-          Emergency Freeze
-        </Button>
-
-        <Button
-          variant="secondary"
-          disabled={!frozen}
-          onClick={onUnfreeze}
-        >
-          <LockOpen size={14} />
-          Unfreeze Payments
-        </Button>
-      </div>
-
-      <p className="mt-3 text-[9px] text-muted">
-        Demo-only state change. No NEAR transaction is submitted.
+      <p className="mt-4 text-[9px] text-muted">
+        Freeze and unfreeze signing are implemented in Issue #13.
       </p>
     </Card>
   );

@@ -4,7 +4,11 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { ApprovedRecipient } from "@/data/demo-security-policies";
+
+export type ApprovedRecipient = {
+  accountId: string;
+  label: string;
+};
 
 type AddRecipientDialogProps = {
   open: boolean;
@@ -104,7 +108,7 @@ export function AddRecipientDialog({
             }}
           >
             <Plus size={14} />
-            Add Demo Recipient
+            Add Recipient
           </Button>
         </div>
       </div>

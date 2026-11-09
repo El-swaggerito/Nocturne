@@ -41,6 +41,23 @@ function requireContractId() {
   return nearConfig.contractId;
 }
 
+export const guardAccount = {
+  async getBalance() {
+    const account = await provider.viewAccount({
+      accountId: requireContractId(),
+      blockQuery: {
+        finality: "final",
+      },
+    });
+
+    return {
+      amount: account.amount.toString(),
+      locked: account.locked.toString(),
+      storageUsage: account.storage_usage,
+    };
+  },
+};
+
 export const guardViews = {
   getOwner() {
     return provider.callFunction<string>({

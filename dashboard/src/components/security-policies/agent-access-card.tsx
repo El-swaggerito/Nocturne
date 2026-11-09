@@ -3,7 +3,13 @@ import { CheckCircle2, CircleX, LockKeyhole } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
-export function AgentAccessCard() {
+export function AgentAccessCard({
+  owner,
+  agent,
+}: {
+  owner: string;
+  agent: string;
+}) {
   const denied = [
     "Policy modification",
     "Emergency Freeze control",
@@ -20,7 +26,7 @@ export function AgentAccessCard() {
         </div>
 
         <span className="font-technical text-[9px] text-cyan">
-          Restricted Scope
+          Contract Role
         </span>
       </div>
 
@@ -31,11 +37,11 @@ export function AgentAccessCard() {
 
         <div className="mt-1 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <span className="font-technical text-[10px] font-semibold">
-            agent-v1.nocturne.testnet
+            {agent}
           </span>
 
           <span className="font-technical rounded bg-background px-2 py-1 text-[9px] text-muted">
-            Restricted function-call access
+            Expected restricted function-call scope
           </span>
         </div>
       </div>
@@ -55,6 +61,19 @@ export function AgentAccessCard() {
             value="Denied"
           />
         ))}
+      </div>
+
+      <div className="mt-4 rounded-control bg-elevated p-3">
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted">
+          Owner Account
+        </p>
+
+        <p
+          className="font-technical mt-1 break-all text-[10px]"
+          title={owner}
+        >
+          {owner}
+        </p>
       </div>
 
       <div className="mt-4 border-t border-border pt-4">

@@ -1,36 +1,22 @@
 import { Badge } from "@/components/ui/badge";
-import type { PaymentStatus as PaymentStatusType } from "@/data/demo-overview";
 
-const config = {
-  confirmed: {
-    label: "Confirmed",
-    variant: "success" as const,
-  },
-  pending: {
-    label: "Pending",
-    variant: "warning" as const,
-  },
-  "policy-rejected": {
-    label: "Policy Rejected",
-    variant: "danger" as const,
-  },
-  failed: {
-    label: "Failed",
-    variant: "neutral" as const,
-  },
-};
+export type PaymentStatusType =
+  | "confirmed"
+  | "pending"
+  | "failed";
 
 export function PaymentStatus({
   status,
 }: {
   status: PaymentStatusType;
 }) {
-  const item = config[status];
+  if (status === "confirmed") {
+    return <Badge variant="success">Confirmed</Badge>;
+  }
 
-  return (
-    <Badge variant={item.variant}>
-      <span className="size-1.5 rounded-full bg-current" />
-      {item.label}
-    </Badge>
-  );
+  if (status === "pending") {
+    return <Badge variant="warning">Pending</Badge>;
+  }
+
+  return <Badge variant="danger">Failed</Badge>;
 }

@@ -7,44 +7,84 @@ import {
 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { paymentMetrics } from "@/data/demo-payments";
+import type {
+  PaymentView,
+  SpendingView,
+} from "@/lib/contract-types";
+import {
+  formatYoctoNear,
+  percentageOfLimit,
+} from "@/lib/format-near";
 
-const metrics = [
-  {
-    label: "Demo Records",
-    value: String(paymentMetrics.total),
-    suffix: "records",
-    caption: "Current UI dataset",
-    icon: ReceiptText,
-    tone: "text-foreground",
-  },
-  {
-    label: "Pending Settlement",
-    value: String(paymentMetrics.pending),
-    suffix: "payments",
-    caption: `${paymentMetrics.pendingNear} NEAR reserved`,
-    icon: Clock3,
-    tone: "text-warning",
-  },
-  {
-    label: "Confirmed",
-    value: String(paymentMetrics.confirmed),
-    suffix: "payments",
-    caption: `${paymentMetrics.confirmedNear} NEAR demo total`,
-    icon: ShieldCheck,
-    tone: "text-cyan",
-  },
-  {
-    label: "Rejected / Failed",
-    value: String(paymentMetrics.rejected + paymentMetrics.failed),
-    suffix: "events",
-    caption: `${paymentMetrics.rejected} rejected · ${paymentMetrics.failed} failed`,
-    icon: CircleX,
-    tone: "text-danger",
-  },
-];
+export function PaymentMetrics({
+  payments,
+  spending,
+}: {
+  payments: PaymentView[];
+  spending: SpendingView;
+}) {
+  const pending = payments.filter(
+    (item) => item.status === "pending",
+  );
 
-export function PaymentMetrics() {
+  const confirmed = payments.filter(
+    (item) => item.status === "confirmed",
+  );
+
+  const failed = payments.filter(
+    (item) => item.status === "failed",
+  );
+
+  const pendingTotal = pending.reduce(
+    (total, item) => total + BigInt(item.amount_yocto),
+    BigInt(0),
+  );
+
+  const confirmedTotal = confirmed.reduce(
+    (total, item) => total + BigInt(item.amount_yocto),
+    BigInt(0),
+  );
+
+  const utilisation = percentageOfLimit(
+    spending.daily_committed,
+    spending.daily_limit,
+  );
+
+  const metrics = [
+    {
+      label: "Retained Records",
+      value: String(payments.length),
+      suffix: "records",
+      caption: "Current Guard history",
+      icon: ReceiptText,
+      tone: "text-foreground",
+    },
+    {
+      label: "Pending Settlement",
+      value: String(pending.length),
+      suffix: "payments",
+      caption: `${formatYoctoNear(pendingTotal)} NEAR pending`,
+      icon: Clock3,
+      tone: "text-warning",
+    },
+    {
+      label: "Confirmed",
+      value: String(confirmed.length),
+      suffix: "payments",
+      caption: `${formatYoctoNear(confirmedTotal)} NEAR retained total`,
+      icon: ShieldCheck,
+      tone: "text-cyan",
+    },
+    {
+      label: "Failed",
+      value: String(failed.length),
+      suffix: "payments",
+      caption: "Recorded transfer failures",
+      icon: CircleX,
+      tone: "text-danger",
+    },
+  ];
+
   return (
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       {metrics.map(({ label, value, suffix, caption, icon: Icon, tone }) => (
@@ -62,7 +102,10 @@ export function PaymentMetrics() {
               <span className={`font-technical text-2xl ${tone}`}>
                 {value}
               </span>
-              <span className="text-[10px] text-muted">{suffix}</span>
+
+              <span className="text-[10px] text-muted">
+                {suffix}
+              </span>
             </div>
 
             <p className="font-technical mt-1 text-[9px] text-muted">
@@ -74,33 +117,38 @@ export function PaymentMetrics() {
 
       <Card className="flex min-h-[142px] flex-col justify-between p-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted">Today&apos;s Committed</span>
+          <span className="text-xs text-muted">
+            Today&apos;s Committed
+          </span>
+
           <Gauge size={17} className="text-cyan" />
         </div>
 
         <div>
           <div className="flex items-baseline justify-between gap-2">
             <span className="font-technical text-lg">
-              {paymentMetrics.committedToday} NEAR
+              {formatYoctoNear(spending.daily_committed)} NEAR
             </span>
+
             <span className="font-technical text-[9px] text-muted">
-              / {paymentMetrics.dailyLimit}
+              / {formatYoctoNear(spending.daily_limit)}
             </span>
           </div>
 
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-elevated">
             <div
               className="h-full rounded-full bg-cyan"
-              style={{ width: `${paymentMetrics.utilisation}%` }}
+              style={{ width: `${utilisation}%` }}
             />
           </div>
 
           <div className="mt-2 flex items-center justify-between">
             <span className="text-[9px] uppercase tracking-wider text-muted">
-              UTC day
+              UTC day {spending.utc_day}
             </span>
+
             <span className="font-technical text-[9px] text-cyan">
-              {paymentMetrics.utilisation}% used
+              {utilisation}% used
             </span>
           </div>
         </div>
