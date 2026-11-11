@@ -36,6 +36,18 @@ SHA-256:
 
 The Wasm artefact is generated locally and is not committed to Git.
 
+## Integration test environment note
+
+The Rust unit suite passes locally with 56/56 tests.
+
+`cargo test -p nocturne_integration_tests` cannot run on the development machine because `near-workspaces 0.24.0` attempts to install `neard-sandbox`, which does not support macOS Intel (`darwin-x86_64`).
+
+Observed error:
+
+`UnsupportedPlatformError("only linux-x86_64, linux-aarch64, and darwin-arm64 are supported")`
+
+This is an environment limitation, not a Nocturne contract test failure. Critical integration behaviour for Issue #14 was verified independently against NEAR testnet with real transactions and restricted access keys.
+
 ## Treasury safety buffer
 
 The Guard refuses payments that would reduce its available balance below the contract storage reserve.
@@ -115,6 +127,12 @@ Emergency-freeze evidence:
 - Daily committed remained `10000000000000000000000`.
 - Pending total remained `0`.
 - No payment record was created.
+
+Post-demo state:
+
+- The owner restored the Guard to `frozen = false`.
+- Unfreeze transaction: `DzAFCbyqqsn3JGsUPcNieTGQcVt7ELvQSLuyQFm7A2fc`
+- `is_frozen` was verified as `false` afterwards.
 
 Forbidden owner-method evidence:
 
