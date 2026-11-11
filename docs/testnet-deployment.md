@@ -58,8 +58,21 @@ Restricted agent key verification:
 - Allowed methods: `request_payment`
 - Allowance: `0.25 NEAR`
 - Add-key transaction: `FBXX3XfRNqWBotPsgLYBMqwmQP458wT94CB2ganyy1D8`
-- Original FullAccess key remains present pending controlled removal.
+- Original FullAccess recovery key remains stored locally and must not be exposed to the AI runtime.
+
+Restricted `request_payment` evidence:
+
+- Restricted key: `ed25519:7tuTJ6k7DwQZ5GsJC6N9xpLJBzZgZ3tkzKuAXe7ehsgg`
+- Transaction: `5pUBHepvnWGBeA9jXejh2jjz9Sy7me6hFUBRTLLginVn`
+- NEAR accepted the function-call key for `request_payment`.
+- The Guard then rejected the proposal with `RecipientNotApproved`, confirming contract policy remained authoritative.
 
 Valid payment evidence: pending
 
-Forbidden owner-method evidence: pending
+Forbidden owner-method evidence:
+
+- Method attempted: `set_frozen`
+- Signing key: `ed25519:7tuTJ6k7DwQZ5GsJC6N9xpLJBzZgZ3tkzKuAXe7ehsgg`
+- Result: rejected by NEAR access-key permissions before contract execution.
+- Error: `Transaction method name <set_frozen> isn't allowed by the access key.`
+- No transaction ID was produced because the transaction was rejected before execution.
