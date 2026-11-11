@@ -67,7 +67,19 @@ Restricted `request_payment` evidence:
 - NEAR accepted the function-call key for `request_payment`.
 - The Guard then rejected the proposal with `RecipientNotApproved`, confirming contract policy remained authoritative.
 
-Valid payment evidence: pending
+Valid payment evidence:
+
+- Request ID: `req_00000000000000000000000000000001`
+- Recipient: `nocturne-owner-26.testnet`
+- Amount: `10000000000000000000000` yoctoNEAR (`0.01 NEAR`)
+- Signing key: restricted function-call key `ed25519:7tuTJ6k7DwQZ5GsJC6N9xpLJBzZgZ3tkzKuAXe7ehsgg`
+- Transaction: `5UamW1WkPpq2N3zAVS9EfW71pfEaQczbvAmiQ3hQbPNC`
+- Contract log: `payment_pending:req_00000000000000000000000000000001`
+- Callback log: `payment_confirmed:req_00000000000000000000000000000001`
+- Final payment status: `confirmed`
+- Daily committed after settlement: `10000000000000000000000`
+- Pending total after settlement: `0`
+
 
 Forbidden owner-method evidence:
 
