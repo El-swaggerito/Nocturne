@@ -2,12 +2,27 @@ import { Info, TriangleAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import type { InvoiceAnalysisResult } from "@/lib/agent-api";
+import type { AgentPaymentResult } from "@/lib/payment-api";
+
+type ProposalCardProps = {
+  analysis: InvoiceAnalysisResult | null;
+  paymentResult: AgentPaymentResult | null;
+  submitting: boolean;
+  reconciling: boolean;
+  paymentError: string | null;
+  onSubmit: () => void;
+  onReconcile: () => void;
+};
 
 export function ProposalCard({
   analysis,
-}: {
-  analysis: InvoiceAnalysisResult | null;
-}) {
+  paymentResult,
+  submitting,
+  reconciling,
+  paymentError,
+  onSubmit,
+  onReconcile,
+}: ProposalCardProps) {
   if (!analysis) {
     return (
       <section className="flex min-h-[590px] flex-col gap-4 rounded-card border border-border bg-card p-4">
@@ -139,16 +154,64 @@ export function ProposalCard({
 
       <TrustNotice />
 
-      <div className="rounded-control border border-border bg-elevated p-3">
-        <p className="text-[10px] font-medium">
-          Agent submission unavailable
-        </p>
+      <div className="space-y-3 rounded-control border border-border bg-elevated p-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+            Restricted Agent Submission
+          </p>
+          <p className="mt-1 text-[10px] leading-4 text-muted">
+            Submission uses the server-side restricted agent key. The browser never receives signing credentials.
+          </p>
+        </div>
 
-        <p className="mt-1 text-[10px] leading-4 text-muted">
-          The restricted agent client is not connected to this dashboard yet.
-          No request ID, transaction hash or on-chain success is being
-          fabricated.
-        </p>
+        {paymentError ? (
+          <p className="rounded bg-danger-bg px-3 py-2 text-[10px] text-danger">
+            {paymentError}
+          </p>
+        ) : null}
+
+        {paymentResult ? (
+          <div className="space-y-2 rounded bg-card p-3">
+            <ProposalValue label="Status" value={paymentResult.status} />
+            {paymentResult.requestId ? (
+              <ProposalValue label="Request ID" value={paymentResult.requestId} />
+            ) : null}
+            {paymentResult.transactionHash ? (
+              <ProposalValue label="Transaction Hash" value={paymentResult.transactionHash} />
+            ) : null}
+            {paymentResult.reason ? (
+              <ProposalValue label="Chain Result" value={paymentResult.reason} />
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting || reconciling || paymentResult !== null}
+            className="rounded-control bg-primary px-3 py-2 text-[10px] font-semibold text-background disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting ? "Submitting..." : paymentResult ? "Submission Recorded" : "Submit via Restricted Agent"}
+          </button>
+
+          {paymentResult?.status === "pending" && paymentResult.transactionHash ? (
+            <button
+              type="button"
+              onClick={onReconcile}
+              disabled={submitting || reconciling}
+              className="rounded-control border border-border bg-card px-3 py-2 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {reconciling ? "Reconciling..." : "Refresh Settlement"}
+            </button>
+          ) : null}
+        </div>
+
+        {paymentResult?.status === "pending" && !paymentResult.transactionHash ? (
+          <p className="text-[9px] leading-4 text-muted">
+            Outcome is not yet independently verifiable. No automatic resend will occur.
+          </p>
+        ) : null}
       </div>
     </section>
   );
