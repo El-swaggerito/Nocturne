@@ -34,7 +34,7 @@ is in [`scenarios.md`](scenarios.md).
 | P2 | Review findings F2 and F3 fixed, or noted as known in the write-up (`docs/security/contract-review.md`) | El-swaggerito |
 | P3 | Team-controlled testnet accounts: owner, agent, `nocturne-merchant.testnet`, `nocturne-attacker.testnet`. If a name is taken, pick another and edit **all** files in `fixtures/` to match | Team |
 | P4 | Agent restricted key set up exactly as `docs/security/agent-permissions.md` §3–§4, and the `list-keys` output saved | Apexcomrade |
-| P5 | A way to submit an agent proposal to the chain. The agent library has `NearPaymentClient.submit`, but there's **no command for it yet**. Ask Lakes41 for a small runner (`invoice file → extract → submit → print result`). Fallback in `scenarios.md` | Lakes41 |
+| P5 | Server-side demo runner available via `npm run demo:submit -- <invoice-file>`. It extracts the invoice, verifies the configured restricted FunctionCall key, calls only `request_payment`, and prints the sanitised result. | Lakes41 / El-swaggerito |
 | P6 | `.env` at the repo root with `NEAR_AI_KEY`, `NEAR_GUARD_ACCOUNT_ID`, `NEAR_AGENT_ACCOUNT_ID`, `NEAR_AGENT_PRIVATE_KEY`, and only on demo day `NEAR_ENABLE_TESTNET_WRITES=yes` and `NEAR_CONTRACT_INTERFACE_AGREED=yes` | Lakes41 / Apexcomrade |
 | P7 | `near` CLI ([near-cli-rs](https://github.com/near/near-cli-rs)) installed; owner key and agent key available to it (§0 of `scenarios.md`) | Whoever runs it |
 | P8 | Screen recorder running, with terminal font large enough to read | Whoever runs it |

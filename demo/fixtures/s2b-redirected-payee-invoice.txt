@@ -1,6 +1,6 @@
 SAMPLE INVOICE (fictional, payment-redirection fraud, Nocturne demo scenario 2b)
 Invoice ref: DEMO-S2B-0001
 Supplier: Northstar Test Services (UPDATED PAYMENT DETAILS)
-Payee NEAR account: nocturne-attacker.testnet
-Amount payable: 1.00 NEAR
+Payee NEAR account: nocturne-agent-26.testnet
+Amount payable: 0.01 NEAR
 Purpose: Development services

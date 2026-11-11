@@ -19,6 +19,8 @@ export type PaymentResult =
 export interface NearPaymentTransport {
   assertRestrictedKey(config: NearPaymentConfig): Promise<void>;
   sendPayment(config: NearPaymentConfig, args: RequestPaymentArgs): Promise<unknown>;
+  /** Read the Guard contract's exact next sequential request ID before a live submission. */
+  readNextRequestId?(config: NearPaymentConfig): Promise<unknown>;
   readTransaction(config: NearPaymentConfig, txHash: string): Promise<unknown>;
   /** Optional trusted view method once Issue #6 defines the settlement schema. */
   readSettlement?(config: NearPaymentConfig, requestId: string): Promise<unknown>;
@@ -106,8 +108,29 @@ export class NearPaymentClient {
   async submit(proposal: unknown): Promise<PaymentResult> {
     const checked = invoiceProposalSchema.safeParse(proposal);
     if (!checked.success) return { status: "ai_rejected", reason: "invalid_invoice_proposal" };
+    let liveRequestId: string | undefined;
+    if (
+      this.config.enableTestnetWrites &&
+      this.config.contractInterfaceApproved &&
+      this.transport.readNextRequestId
+    ) {
+      try {
+        const next = await this.transport.readNextRequestId(this.config);
+        if (typeof next !== "string" || !/^req_[0-9a-f]{32}$/.test(next)) {
+          throw new Error("invalid request ID");
+        }
+        liveRequestId = next;
+      } catch {
+        throw new Error("Unable to read the Guard next request ID; no transaction was sent.");
+      }
+    }
+
     const { record, file } = await this.journal.reserve(
-      checked.data, this.config.network, this.config.contractId, this.config.agentId,
+      checked.data,
+      this.config.network,
+      this.config.contractId,
+      this.config.agentId,
+      liveRequestId,
     );
     const current = await this.journal.current(file);
     if (current.status !== "prepared") return current;
@@ -200,6 +223,14 @@ export function createNearTestnetTransport(): NearPaymentTransport {
       const publicKey = near.KeyPair.fromString(secret).getPublicKey().toString();
       const key = await account.getAccessKey(publicKey);
       assertFunctionCallPermission(key.permission, config.contractId);
+    },
+    async readNextRequestId(config) {
+      const { provider } = await sdk(config);
+      return provider.callFunction({
+        contractId: config.contractId,
+        method: "get_next_request_id",
+        args: {},
+      });
     },
     async sendPayment(config, args) {
       const { account } = await sdk(config);

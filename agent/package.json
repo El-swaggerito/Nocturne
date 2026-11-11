@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "npm run build && node --test dist/tests/config.test.js dist/tests/inference.test.js dist/tests/types.test.js dist/tests/invoice.test.js dist/tests/near.test.js",
-    "smoke": "npm run build && node --env-file-if-exists=../.env dist/src/cli.js fixtures/valid-invoice.txt"
+    "smoke": "npm run build && node --env-file-if-exists=../.env dist/src/cli.js fixtures/valid-invoice.txt",
+    "demo:submit": "npm run build && node --env-file=../.env dist/src/demo-runner.js"
   },
   "dependencies": {
     "near-api-js": "7.4.0",

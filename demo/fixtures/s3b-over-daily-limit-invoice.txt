@@ -1,6 +1,6 @@
 SAMPLE INVOICE (fictional, Nocturne demo scenario 3b)
 Invoice ref: DEMO-S3B-0001
 Supplier: Northstar Test Services
-Payee NEAR account: nocturne-merchant.testnet
-Amount payable: 1.50 NEAR
+Payee NEAR account: nocturne-owner-26.testnet
+Amount payable: 0.05 NEAR
 Purpose: Follow-up services
