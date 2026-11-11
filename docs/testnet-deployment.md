@@ -40,17 +40,25 @@ The Wasm artefact is generated locally and is not committed to Git.
 
 Not performed yet.
 
-Contract account: pending
+Contract account: `nocturne-guard-26.testnet`
 
-Owner account: pending
+Owner account: `nocturne-owner-26.testnet`
 
-Agent account: pending
+Agent account: `nocturne-agent-26.testnet`
 
-Deployment transaction: pending
+Deployment transaction: `9V3V5DAEzAM939x72U5jRt16PNUVe9iHxxMNy8puEU6k`
 
-Initialisation transaction: pending
+Initialisation transaction: `J3obXJdqLM1bgtoGYwZHkKMEFHJNGpqJt6XhrWoHxWAB`
 
-Restricted agent key verification: pending
+Restricted agent key verification:
+
+- Agent account: `nocturne-agent-26.testnet`
+- Restricted public key: `ed25519:7tuTJ6k7DwQZ5GsJC6N9xpLJBzZgZ3tkzKuAXe7ehsgg`
+- Receiver: `nocturne-guard-26.testnet`
+- Allowed methods: `request_payment`
+- Allowance: `0.25 NEAR`
+- Add-key transaction: `FBXX3XfRNqWBotPsgLYBMqwmQP458wT94CB2ganyy1D8`
+- Original FullAccess key remains present pending controlled removal.
 
 Valid payment evidence: pending
 
