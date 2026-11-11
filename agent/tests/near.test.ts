@@ -119,6 +119,30 @@ test("one restricted request_payment call uses exact arguments and saves transac
   assert.equal(calls, 1);
 }));
 
+test("live submission uses the Guard next sequential request ID", async () => withTemp(async (dir) => {
+  const expected = "req_00000000000000000000000000000002";
+  let observed = "";
+
+  const transport = mockTransport({
+    async readNextRequestId() { return expected; },
+    async sendPayment(_c, args) {
+      observed = args.request_id;
+      return {
+        transaction: { hash: "fictional-sequential-id-tx" },
+        final_execution_status: "FINAL",
+        status: { SuccessValue: "" },
+      };
+    },
+  });
+
+  const result = await new NearPaymentClient(config(dir, true), transport).submit(validProposal);
+  assert.equal(observed, expected);
+  assert.notEqual(result.status, "ai_rejected");
+  if (result.status !== "ai_rejected") {
+    assert.equal(result.requestId, expected);
+  }
+}));
+
 test("timeout after sending remains pending on restart and is never resent", async () => withTemp(async (dir) => {
   let calls = 0;
   const transport = mockTransport({

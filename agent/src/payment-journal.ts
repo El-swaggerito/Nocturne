@@ -68,12 +68,15 @@ export class FilePaymentJournal {
     return data as unknown as PaymentRecord;
   }
 
-  async reserve(proposal: InvoiceProposal, network: string, contractId: string, agentId: string): Promise<{ record: PaymentRecord; file: string }> {
+  async reserve(proposal: InvoiceProposal, network: string, contractId: string, agentId: string, initialRequestId?: string): Promise<{ record: PaymentRecord; file: string }> {
     await this.initialise();
     const file = this.location(network, contractId, agentId, proposal.invoiceReference);
     const fingerprint = this.fingerprint(proposal);
+    if (initialRequestId && !/^req_[0-9a-f]{32}$/.test(initialRequestId)) {
+      throw new PaymentJournalError("Guard returned an invalid request ID; no submission was made.");
+    }
     const initial: PaymentRecord = {
-      requestId: `req_${hexHash(JSON.stringify([network, contractId, agentId, proposal.invoiceReference])).slice(0, 32)}`,
+      requestId: initialRequestId ?? `req_${hexHash(JSON.stringify([network, contractId, agentId, proposal.invoiceReference])).slice(0, 32)}`,
       fingerprint,
       status: "prepared",
     };
