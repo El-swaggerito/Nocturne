@@ -462,10 +462,9 @@ async fn payment_cannot_spend_storage_reserve() -> anyhow::Result<()> {
     Ok(())
 }
 
-// ---------------------------------------------------------------- findings
-// Ignored tests assert the behaviour we WANT. They fail on the current
-// contract; see docs/security/contract-review.md. Run them with:
-//   cargo test -p nocturne_integration_tests -- --ignored
+// ---------------------------------------------------------------- regression coverage
+// These tests preserve coverage for security findings identified during the
+// Issue #7 contract review. See docs/security/contract-review.md.
 
 const F2_AMOUNT: u128 = 3 * ONE_NEAR;
 
@@ -495,7 +494,6 @@ async fn control_f2_treasury_covers_two_sequential_payments() -> anyhow::Result<
 }
 
 #[tokio::test]
-#[ignore = "F2: pending transfers are counted twice against the treasury balance"]
 async fn finding_f2_affordable_concurrent_payments_are_both_accepted() -> anyhow::Result<()> {
     let env = setup_for_two_payments().await?;
     let amount = F2_AMOUNT;

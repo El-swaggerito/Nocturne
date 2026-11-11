@@ -16,98 +16,84 @@ duplicate request IDs, payments while frozen, attached deposits and
 externally-called settlement callbacks are all rejected. A failed transfer is
 marked `failed` and its allowance released.
 
-The review found **one medium issue that should be fixed before any real
-use (F1)**, one known medium design gap (F4), and three low or informational
-items.
+The original review found one medium implementation issue (F1), one known medium design gap (F4), and three low or informational items. F1, F2 and F3 have since been remediated and retained as regression tests. F4 remains an explicit design gap outside the hackathon MVP.
 
 | ID | Severity | Finding | Status |
 |---|---|---|---|
-| F1 | **Medium** | A compromised agent can permanently stop all payments for 256 yoctoNEAR | Open. Failing test included |
-| F2 | Low | In-flight payments are counted twice against the treasury balance | Open. Failing test included |
-| F3 | Low | The Guard itself or the agent can be added as an approved recipient | Open. Failing test included |
+| F1 | **Medium** | A compromised agent can permanently stop all payments for 256 yoctoNEAR | **Fixed**. Settled records are pruned while sequential nonces prevent replay |
+| F2 | Low | In-flight payments are counted twice against the treasury balance | **Fixed**. Balance check no longer double-counts `pending_total` |
+| F3 | Low | The Guard itself or the agent can be added as an approved recipient | **Fixed**. Both recipients are rejected |
 | F4 | Medium (known, T20) | No owner method to replace the agent account | Open |
 | F5 | Info | Payment history is stored inline in contract state | Open |
 
 ## How to run
 
 ```bash
-cargo test -p nocturne_guard                       # 52 unit tests
-cargo test -p nocturne_integration_tests           # 16 sandbox tests
-# Tests that demonstrate open findings (these FAIL until fixed):
-cargo test -p nocturne_guard -- --ignored
-cargo test -p nocturne_integration_tests -- --ignored
+cargo test -p nocturne_guard                       # 56 unit tests
+cargo test -p nocturne_integration_tests           # sandbox security tests
 ```
 Sandbox setup: [`integration-tests/README.md`](../../integration-tests/README.md).
 
-**Observed results** at `586211d` plus this PR's tests:
-- `nocturne_guard`: 52 passed, 0 failed, 2 ignored (F1, F3).
-- `nocturne_integration_tests`: 16 passed, 0 failed, 1 ignored (F2).
-- Run with `--ignored`, F1, F2 and F3 each fail as described below.
+**Current verification status:**
+- `nocturne_guard`: 56 passed, 0 failed, 0 ignored on the current Issue #7 branch.
 - `cargo fmt --all --check` is clean.
+- Sandbox coverage remains implemented in `integration-tests/tests/guard.rs`. It must be executed on a supported `near-workspaces` platform; local `darwin-x86_64` cannot run near-workspaces 0.24.0.
 
 ## Findings
 
-### F1 (Medium): payment history cap lets the agent stop all payments permanently
+### F1 (Medium, fixed): payment history cap could stop all payments permanently
 
-`request_payment` refuses new requests once `payments.len() >= MAX_PAYMENTS`
-(256), and records are never removed. That makes 256 a **lifetime** limit on
-payments, not a limit on records kept.
+**Original finding:** the initial implementation refused new requests once
+`payments.len() >= MAX_PAYMENTS` (256), while settled records were never
+removed. This made 256 a lifetime payment limit.
 
 - **Attack:** a compromised agent sends 256 payments of 1 yoctoNEAR each to
   any approved recipient. Every request is within policy: cost 256 yoctoNEAR
   plus gas. After that, every request fails with
   `Payment history capacity reached`.
-- **Impact:** no funds are lost, but the Guard can never pay again. Freezing,
-  changing limits or changing recipients doesn't help, and there's no
-  recovery method. The only way out is redeploying code from the Guard
-  account. Even without an attacker, normal use runs out after 256 payments.
-- **Evidence:** `security_tests::finding_f1_settled_history_does_not_brick_guard`
-  fails at `lib.rs:181` with `Payment history capacity reached`.
-- **Recommended fix** (needs a decision on dedupe retention, threat model §8):
-  - Let settled (`confirmed`/`failed`) records be pruned. Either an owner-only
-    `prune_settled(before_utc_day)`, or automatic pruning of records older
-    than N days.
-  - Keep duplicate protection for pruned IDs. Either keep a compact set of
-    seen IDs, or have the contract reject requests whose ID belongs to a day
-    that's already been pruned. That needs a day-scoped request ID, which is
-    an agent change (#10).
-  - Optionally add a minimum payment amount, so tiny dust payments can't
-    burn through history.
+- **Original impact:** no funds were lost, but the Guard could stop accepting
+  payments permanently after 256 settled records. Freezing or changing policy
+  could not recover it, so normal use or a compromised agent could exhaust the
+  payment-history capacity.
+- **Remediation:** when the history reaches capacity, the Guard prunes a
+  settled record before recording the next request.
+- **Replay protection:** request IDs use a strictly increasing on-chain nonce,
+  so a pruned request ID cannot be submitted again.
+- **Regression evidence:** `finding_f1_settled_history_does_not_brick_guard`
+  and `finding_f1_pruned_request_id_cannot_be_replayed` both pass in the
+  current unit suite.
 
-### F2 (Low): in-flight payments are counted twice against the balance
+### F2 (Low, fixed): in-flight payments were counted twice against the balance
 
-The balance check is
-`pending_total + amount + storage_reserve <= env::account_balance()`.
-NEAR deducts a transfer's amount from the account balance when the transfer
-receipt is created, so `account_balance()` already excludes in-flight
-payments. Adding `pending_total` counts them a second time.
+**Original finding:** the balance check included
+`pending_total + amount + storage_reserve`, even though the account balance
+already reflected funds committed to in-flight transfers. This could reject
+otherwise affordable concurrent payments.
 
 - **Impact:** while a payment is in flight (a few blocks), the agent can
   spend only about half of what's actually free. Affordable payments fail
   with `Insufficient unreserved treasury balance`. This fails closed: no
   overspend, only rejected payments.
-- **Evidence:** the Guard is funded with exactly reserve + 2 × 3 NEAR + 1 NEAR.
-  - `control_f2_treasury_covers_two_sequential_payments` passes: the two
-    payments succeed one after the other.
-  - `finding_f2_affordable_concurrent_payments_are_both_accepted` fails: when
-    the two run at the same time, the second is rejected at `lib.rs:207`.
-- **Recommended fix:** use `amount + storage_reserve <= env::account_balance()`.
-  Keep `pending_total` for accounting and the dashboard. A failed transfer's
-  refund lands later, which only makes the check more conservative in the
-  meantime.
+- **Remediation:** the contract now checks
+  `amount + storage_reserve <= env::account_balance()` and keeps
+  `pending_total` only for payment accounting and reporting.
+- **Regression evidence:** the unit regression
+  `finding_f2_pending_total_is_not_double_counted_against_balance` passes.
+  The corresponding sandbox regression is active and must run on a supported
+  `near-workspaces` platform.
 
-### F3 (Low): the Guard or the agent can be approved as a recipient
+### F3 (Low, fixed): the Guard or the agent could be approved as a recipient
 
-`add_approved_recipient` accepts `env::current_account_id()` and `agent_id`
-(threat model T21).
+**Original finding:** `add_approved_recipient` allowed the Guard account or
+the configured agent account to be added as recipients (threat model T21).
 
 - **Impact:** needs an owner mistake. Paying the agent sends treasury funds
   to the account most likely to be compromised. Paying the Guard itself
   creates a no-op transfer that still uses allowance.
-- **Evidence:** `security_tests::finding_f3_self_and_agent_cannot_be_approved`
-  fails.
-- **Recommended fix:** reject both in `add_approved_recipient`. Consider
-  rejecting `owner_id` too, if owner payouts aren't a use case.
+- **Remediation:** `add_approved_recipient` now rejects both the Guard account
+  and the configured agent account.
+- **Regression evidence:** `finding_f3_self_and_agent_cannot_be_approved`
+  passes in the current unit suite.
 
 ### F4 (Medium, known): no agent rotation
 
@@ -121,9 +107,9 @@ change, and leaves all other policy unchanged.
 ### F5 (Info): payment history is stored inline
 
 `payments: BTreeMap<..>` lives in the root contract state. Every call
-deserialises and reserialises the whole history, so gas grows with it. This
-is acceptable at 256 records. **If F1 is fixed by allowing more records,
-switch to `near_sdk::store::LookupMap`/`IterableMap`.**
+deserialises and reserialises the whole history, so gas grows with it. This remains acceptable for the bounded MVP history, but gas cost grows with
+the inline map. If the retained history size is increased substantially,
+consider `near_sdk::store::LookupMap` or `IterableMap`.
 
 ## Coverage against threat-model invariants
 
@@ -137,12 +123,12 @@ U = unit test (`contracts/guard/src/*_tests.rs`), S = sandbox test
 | I3 owner ≠ agent | U `owner_and_agent_cannot_be_the_same`. S `stranger_cannot_initialise_guard` |
 | I4 checks before scheduling | U `policy_tests` boundaries. S `redirected_recipient_is_rejected_and_unpaid`, `per_payment_cap_is_exact`, `freeze_blocks_new_payments_and_unfreeze_restores`, `attached_deposit_is_rejected`, `payments_rejected_before_owner_sets_limits` (U) |
 | I5 daily cap incl. in-flight | U `concurrent_requests_cannot_exceed_daily_cap`. S `concurrent_requests_cannot_both_reserve_against_daily_cap`, `daily_cap_holds_across_sequential_payments` |
-| I6 balance and storage reserve | S `payment_cannot_spend_storage_reserve`, `control_f2_*`. **F2** |
+| I6 balance and storage reserve | U `finding_f2_pending_total_is_not_double_counted_against_balance`. S `payment_cannot_spend_storage_reserve`, `control_f2_*`, `finding_f2_affordable_concurrent_payments_are_both_accepted` |
 | I7 settle exactly once, no replay | U `duplicate_callback_has_no_effect`, `settled_request_id_cannot_be_replayed`, `uppercase_hex_request_id_is_rejected`. S `duplicate_request_id_never_pays_twice` |
 | I8 private callback | U `external_account_cannot_settle`. S `settlement_callback_cannot_be_called_externally` |
 | I9 per-day release on failure | U `failed_callback_refunds_same_day_allowance`, `old_day_failure_does_not_reduce_new_day_usage`. S `failed_transfer_is_marked_failed_and_allowance_restored` |
 | I10 policy changes aren't retroactive | U `freeze_does_not_cancel_pending_transfer`, `lowering_limits_applies_to_already_committed_spend`, `removing_recipient_blocks_future_payments_only` |
-| I11 bounded storage | U `recipient_cap_is_enforced`. **F1** (bounded, but by permanently refusing payments) |
+| I11 bounded storage | U `recipient_cap_is_enforced`, `finding_f1_settled_history_does_not_brick_guard`, `finding_f1_pruned_request_id_cannot_be_replayed` |
 | I12 amounts as strings | S `amount_as_json_number_is_rejected` |
 
 ## Untested risks
@@ -152,17 +138,17 @@ U = unit test (`contracts/guard/src/*_tests.rs`), S = sandbox test
   fails closed, but there's no recovery method. Not forced in tests.
 - **Day rollover on a real chain.** Covered by unit tests with mocked
   timestamps only. The sandbox wasn't fast-forwarded a full day.
-- **Access-key layer** (agent-permissions.md §6 rows 1–5) and **Guard account
-  full-access keys** (T11): testnet only, in #14.
+- **Guard account full-access keys** (T11): operational account-key security is
+  outside the contract test suite.
+- **Restricted agent access key:** verified separately on NEAR testnet in #14;
+  this review does not treat testnet key evidence as sandbox coverage.
 - **Implicit (64-hex) recipients:** a transfer creates the account instead of
   failing. Only the allowlist protects here. Not tested.
-- **Ignored findings:** the tests for F1–F3 must be un-ignored as part of each
-  fix.
+- F1, F2 and F3 now have active regression coverage. The F2 sandbox regression test is no longer ignored.
 
-## Recommendation for #14
+## Follow-up status
 
-- **F2 and F3** are small changes. Fix them in one PR, re-run both suites and
-  un-ignore their tests.
-- **F1 and F4** need a design decision on dedupe retention and agent
-  rotation. They don't block a testnet demo with fewer than 256 payments, but
-  they **must be resolved before any real funds are used**.
+- F1, F2 and F3 were remediated before the live testnet demo.
+- Restricted agent-key behaviour was verified on NEAR testnet in #14.
+- F4, owner-controlled agent rotation, remains a documented design gap outside the hackathon MVP.
+- The contract remains hackathon software and is not audited for mainnet funds.
