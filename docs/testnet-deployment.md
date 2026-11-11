@@ -94,6 +94,19 @@ Spending-limit violation evidence:
 - Pending total remained `0`
 - No payment record was created.
 
+Emergency-freeze evidence:
+
+- Freeze transaction: `88haVM3exKauY7ctkffJPVgx6ZfBDVtgc4VeaKXe7Dgi`
+- Frozen state verified as `true`.
+- Restricted agent attempted request ID `req_00000000000000000000000000000002`.
+- Attempted amount: `10000000000000000000000` yoctoNEAR (`0.01 NEAR`).
+- Rejected payment transaction: `GfnNexYBimJ92uyPWtSRgZk9knJxzuKmxwa2pDLbBXwZ`
+- Result: `Policy rejected: Frozen`
+- Next request ID remained `req_00000000000000000000000000000002`.
+- Daily committed remained `10000000000000000000000`.
+- Pending total remained `0`.
+- No payment record was created.
+
 Forbidden owner-method evidence:
 
 - Method attempted: `set_frozen`
