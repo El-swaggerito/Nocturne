@@ -16,4 +16,13 @@ AI agents built on NEAR Protocol.
 - NEAR AI Cloud
 
 ## Status
-Under active development for NEAR Hackathon 2026.
+
+Deployed and verified on NEAR testnet for Issue #14.
+
+- Guard: `nocturne-guard-26.testnet`
+- Owner: `nocturne-owner-26.testnet`
+- Agent: `nocturne-agent-26.testnet`
+- Restricted agent key may call only `request_payment`
+- Valid payment, spending-limit rejection and emergency freeze have been verified on-chain
+
+See `docs/testnet-deployment.md` for transaction evidence and reproducible deployment details.

@@ -36,6 +36,15 @@ SHA-256:
 
 The Wasm artefact is generated locally and is not committed to Git.
 
+## Treasury safety buffer
+
+The Guard refuses payments that would reduce its available balance below the contract storage reserve.
+
+- Fixed safety reserve: `1000000000000000000000000` yoctoNEAR (`1 NEAR`)
+- Storage reserve also includes `storage_usage * storage_byte_cost`
+- Payment callback gas allocation: `25 Tgas`
+- Pending and committed spending are tracked separately until asynchronous settlement completes
+
 ## Testnet deployment
 
 Not performed yet.
