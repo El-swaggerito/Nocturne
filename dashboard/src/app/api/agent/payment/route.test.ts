@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const submitMock = vi.hoisted(() => vi.fn());
+const reconcileMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/agent-server", () => ({
   createServerPaymentClient: () => ({
     submit: submitMock,
+    reconcile: reconcileMock,
   }),
 }));
 
@@ -21,6 +23,7 @@ function jsonRequest(body: unknown): Request {
 describe("POST /api/agent/payment", () => {
   beforeEach(() => {
     submitMock.mockReset();
+    reconcileMock.mockReset();
   });
 
   it("rejects a request without a proposal before creating a payment", async () => {
@@ -72,6 +75,47 @@ describe("POST /api/agent/payment", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "invalid_request" });
     expect(submitMock).not.toHaveBeenCalled();
+  });
+
+  it("uses read-only reconciliation when requested", async () => {
+    const proposal = {
+      recipient: "recipient.testnet",
+      amountYoctoNear: "10000000000000000000000",
+      invoiceReference: "invoice-38",
+      currency: "NEAR",
+    };
+
+    const paymentResult = {
+      status: "confirmed",
+      requestId: "req_00000000000000000000000000000001",
+      transactionHash: "example-test-hash",
+      reason: "verified_contract_settlement",
+    };
+
+    reconcileMock.mockResolvedValue(paymentResult);
+
+    const response = await POST(jsonRequest({
+      action: "reconcile",
+      proposal,
+    }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ result: paymentResult });
+    expect(reconcileMock).toHaveBeenCalledTimes(1);
+    expect(reconcileMock).toHaveBeenCalledWith(proposal);
+    expect(submitMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unknown payment action", async () => {
+    const response = await POST(jsonRequest({
+      action: "retry",
+      proposal: {},
+    }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "invalid_request" });
+    expect(submitMock).not.toHaveBeenCalled();
+    expect(reconcileMock).not.toHaveBeenCalled();
   });
 
   it("returns a sanitised error when the server payment client throws", async () => {

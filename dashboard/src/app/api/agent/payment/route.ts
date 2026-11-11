@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { createServerPaymentClient } from "@/lib/agent-server";
 
+type PaymentAction = "submit" | "reconcile";
+
 export async function POST(request: Request) {
   let body: unknown;
 
@@ -26,10 +28,35 @@ export async function POST(request: Request) {
     );
   }
 
+  const parsed = body as {
+    proposal: unknown;
+    action?: unknown;
+  };
+
+  const action: PaymentAction =
+    parsed.action === undefined ? "submit" :
+    parsed.action === "submit" || parsed.action === "reconcile"
+      ? parsed.action
+      : "submit";
+
+  if (
+    parsed.action !== undefined &&
+    parsed.action !== "submit" &&
+    parsed.action !== "reconcile"
+  ) {
+    return NextResponse.json(
+      { error: "invalid_request" },
+      { status: 400 },
+    );
+  }
+
   try {
-    const proposal = (body as { proposal: unknown }).proposal;
     const client = createServerPaymentClient();
-    const result = await client.submit(proposal);
+
+    const result =
+      action === "reconcile"
+        ? await client.reconcile(parsed.proposal)
+        : await client.submit(parsed.proposal);
 
     return NextResponse.json({ result });
   } catch {
