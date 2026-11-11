@@ -79,23 +79,19 @@ cd agent && npm run build
 node --env-file=../.env dist/src/cli.js ../demo/fixtures/<FILE>
 ```
 
-**Submit step.** Preferred: the runner from prerequisite P5, which calls
-`NearPaymentClient.submit` and prints `status`, `transactionHash` and
-`reason`.
+**Submit step.** Use the server-side runner, which calls `NearPaymentClient.submit` using only the restricted agent FunctionCall key configured in the local ignored `.env`:
 
-*Fallback if there's no runner:* send the proposal's exact fields yourself,
-signed with the **agent's restricted key**. Say in the evidence that this
-path was used, because then the agent library didn't submit:
 ```bash
-agent_submit() { # $1 recipient, $2 amount in yocto, $3 invoice reference
-  near contract call-function as-transaction "$GUARD" request_payment \
-    json-args "{\"request_id\":\"req_$(openssl rand -hex 16)\",\"recipient_id\":\"$1\",\"amount_yocto\":\"$2\",\"invoice_reference\":\"$3\"}" \
-    prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' \
-    sign-as "$AGENT" network-config testnet sign-with-keychain send
-}
+cd agent
+npm run demo:submit -- ../demo/fixtures/<FILE>
+cd ..
 ```
 
-Submit path used for this run: ☐ runner (P5) ☐ fallback `agent_submit`
+The runner prints the AI proposal separately from the chain result. It verifies the configured access key on-chain before broadcasting and calls only `request_payment`.
+
+Do not use an online `near ... sign-with-keychain` fallback for restricted-key evidence. With the current near-cli-rs keychain flow, an account FullAccess key may be selected instead of the intended FunctionCall key.
+
+Submit path used for this run: server-side `NearPaymentClient` runner
 
 ---
 
@@ -105,7 +101,7 @@ Submit path used for this run: ☐ runner (P5) ☐ fallback `agent_submit`
 payment is confirmed on chain.
 
 1. AI step with `s1-valid-invoice.txt`.
-2. Submit the proposal (fallback: `agent_submit "$MERCHANT" 1500000000000000000000000 DEMO-S1-0001`).
+2. Submit the proposal.
 3. ```bash
    view get_payment '{"request_id":"<request_id from step 2>"}'
    view get_spending
@@ -156,7 +152,7 @@ because the attacker isn't on the owner's approved list.
 1. AI step with `s2b-redirected-payee-invoice.txt`. Expected: a **validated**
    proposal to `nocturne-attacker.testnet`. The agent has no allowlist; the
    Guard does.
-2. Submit it (fallback: `agent_submit "$ATTACKER" 1000000000000000000000000 DEMO-S2B-0001`).
+2. Submit it.
 3. `balance "$ATTACKER"; view get_spending`
 
 | Layer | Expected | Actual |
@@ -174,7 +170,7 @@ Explorer link (checked): ____
 
 ### 3a: over the per-payment limit
 1. AI step with `s3a-over-transaction-limit-invoice.txt` (5 NEAR).
-2. Submit (fallback: `agent_submit "$MERCHANT" 5000000000000000000000000 DEMO-S3A-0001`).
+2. Submit.
 
 | Layer | Expected | Actual |
 |---|---|---|
@@ -185,7 +181,7 @@ Explorer link (checked): ____
 1. `view get_spending`: `daily_committed` should be 1.5 NEAR.
 2. AI step with `s3b-over-daily-limit-invoice.txt` (1.5 NEAR, which is under
    the 2 NEAR per-payment limit).
-3. Submit (fallback: `agent_submit "$MERCHANT" 1500000000000000000000000 DEMO-S3B-0001`).
+3. Submit.
 
 | Layer | Expected | Actual |
 |---|---|---|
@@ -208,7 +204,7 @@ is otherwise allowed (0.5 NEAR: 1.5 + 0.5 = 2.0, within both limits).
    view is_frozen
    ```
 2. AI step with `s4-after-freeze-invoice.txt`.
-3. Submit (fallback: `agent_submit "$MERCHANT" 500000000000000000000000 DEMO-S4-0001`).
+3. Submit.
 4. Owner unfreezes: `owner_call set_frozen '{"frozen":false}'`
 5. *Optional, proves freeze was the only reason:* copy the invoice, change
    the ref to `DEMO-S4-0002`, then run the AI and submit steps again. It
