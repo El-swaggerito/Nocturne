@@ -33,7 +33,6 @@ export function loadNearAIConfig(
 
 // Issue #10: deliberately separate inference credentials from the signing key.
 // Fixed testnet RPC prevents an environment override from receiving RPC data.
-import { resolve } from "node:path";
 import { nearAccountIdSchema } from "./types.js";
 
 export const NEAR_TESTNET_RPC_URL = "https://rpc.testnet.near.org";
@@ -76,7 +75,7 @@ export function loadNearPaymentConfig(
     contractId,
     agentId,
     agentSecretKey,
-    journalDir: resolve(environment.NEAR_PAYMENT_JOURNAL_DIR || ".local/payment-requests"),
+    journalDir: environment.NEAR_PAYMENT_JOURNAL_DIR?.trim() || ".local/payment-requests",
     enableTestnetWrites,
     contractInterfaceApproved,
   };
