@@ -278,7 +278,7 @@ async fn per_payment_cap_is_exact() -> anyhow::Result<()> {
     let res = request(&env, &env.agent, 1, env.merchant.id(), TX_LIMIT + 1).await?;
     assert_rejected(&res, "TransactionLimitExceeded");
 
-    let res = request(&env, &env.agent, 2, env.merchant.id(), TX_LIMIT).await?;
+    let res = request(&env, &env.agent, 1, env.merchant.id(), TX_LIMIT).await?;
     assert!(res.is_success(), "{res:?}");
     Ok(())
 }
@@ -293,7 +293,7 @@ async fn daily_cap_holds_across_sequential_payments() -> anyhow::Result<()> {
     let res = request(&env, &env.agent, 2, env.merchant.id(), 2 * ONE_NEAR + 1).await?;
     assert_rejected(&res, "DailyLimitExceeded");
 
-    let res = request(&env, &env.agent, 3, env.merchant.id(), 2 * ONE_NEAR).await?;
+    let res = request(&env, &env.agent, 2, env.merchant.id(), 2 * ONE_NEAR).await?;
     assert!(res.is_success(), "{res:?}");
     assert_eq!(as_u128(&spending(&env).await?["remaining_daily"]), 0);
     Ok(())
@@ -346,7 +346,7 @@ async fn duplicate_request_id_never_pays_twice() -> anyhow::Result<()> {
         .await?
         .into_result()?;
     let res = request(&env, &env.agent, 1, env.merchant.id(), ONE_NEAR).await?;
-    assert_rejected(&res, "Duplicate request ID");
+    assert_rejected(&res, "Unexpected request nonce");
 
     assert_eq!(balance(&env, env.merchant.id()).await? - before, ONE_NEAR);
     Ok(())
@@ -372,7 +372,7 @@ async fn freeze_blocks_new_payments_and_unfreeze_restores() -> anyhow::Result<()
         .transact()
         .await?
         .into_result()?;
-    let res = request(&env, &env.agent, 2, env.merchant.id(), ONE_NEAR).await?;
+    let res = request(&env, &env.agent, 1, env.merchant.id(), ONE_NEAR).await?;
     assert!(res.is_success(), "{res:?}");
     Ok(())
 }
