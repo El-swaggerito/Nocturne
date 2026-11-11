@@ -23,7 +23,7 @@ describe("payment API", () => {
       recipient: "vendor.testnet",
       amountYoctoNear: "50000000000000000000000",
       invoiceReference: "INV-38",
-      currency: "NEAR",
+      validationErrors: [],
     });
   });
 

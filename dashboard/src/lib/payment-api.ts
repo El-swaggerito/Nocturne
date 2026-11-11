@@ -4,7 +4,7 @@ export type AgentPaymentProposal = {
   recipient: string;
   amountYoctoNear: string;
   invoiceReference: string;
-  currency: "NEAR";
+  validationErrors: [];
 };
 
 export type AgentPaymentResult = {
@@ -27,7 +27,7 @@ export function toAgentPaymentProposal(
     recipient: proposal.recipientId,
     amountYoctoNear: proposal.amountYocto,
     invoiceReference: proposal.invoiceReference,
-    currency: "NEAR",
+    validationErrors: [],
   };
 }
 
