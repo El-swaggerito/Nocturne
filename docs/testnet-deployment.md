@@ -81,6 +81,19 @@ Valid payment evidence:
 - Pending total after settlement: `0`
 
 
+Spending-limit violation evidence:
+
+- Request ID attempted: `req_00000000000000000000000000000002`
+- Amount attempted: `60000000000000000000000` yoctoNEAR (`0.06 NEAR`)
+- Per-transaction limit: `50000000000000000000000` yoctoNEAR (`0.05 NEAR`)
+- Signing key: restricted function-call key `ed25519:7tuTJ6k7DwQZ5GsJC6N9xpLJBzZgZ3tkzKuAXe7ehsgg`
+- Transaction: `1qxuAUWbG59W1yNSptke7MozSnn4hmS1dadcDCRMyrj`
+- Result: `Policy rejected: TransactionLimitExceeded`
+- Next request ID remained `req_00000000000000000000000000000002`
+- Daily committed remained `10000000000000000000000`
+- Pending total remained `0`
+- No payment record was created.
+
 Forbidden owner-method evidence:
 
 - Method attempted: `set_frozen`
