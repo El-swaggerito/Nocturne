@@ -45,11 +45,11 @@ Full details: [`docs/security/threat-model.md`](docs/security/threat-model.md).
 | Agent-only `request_payment` | Implemented (#3, #6) |
 | Owner-only agent rotation | **Missing** (review finding F4) |
 | Limits, allowlist, freeze enforcement | Implemented (#5) |
-| Reserved payments, private callback, dedupe | Implemented (#6). Open findings F1, F2 |
-| Restricted agent access key | Specified in [`docs/security/agent-permissions.md`](docs/security/agent-permissions.md) (#4). Testnet evidence pending (#14) |
+| Reserved payments, private callback, dedupe | Implemented (#6). F1/F2/F3 remediations merged and regression-tested |
+| Restricted agent access key | Verified on NEAR testnet with a restricted FunctionCall key limited to `request_payment` (#14) |
 | Agent client refuses non-restricted keys | Implemented (#10) |
 | Adversarial and sandbox tests | Implemented (#7). See [`docs/security/contract-review.md`](docs/security/contract-review.md) |
 
-Open review findings, with failing tests, are listed in
+Security review findings and their current remediation status are documented in
 [`docs/security/contract-review.md`](docs/security/contract-review.md).
-F1 and F4 must be fixed before the Guard holds real funds.
+F1, F2 and F3 are fixed. F4, owner-controlled agent rotation, remains a documented design gap and is outside the hackathon MVP.
