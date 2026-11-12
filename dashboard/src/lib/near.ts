@@ -21,7 +21,7 @@ export const nearConfig = {
   contractId: process.env.NEXT_PUBLIC_GUARD_CONTRACT_ID?.trim() ?? "",
   nodeUrl:
     network === "testnet"
-      ? "https://rpc.testnet.near.org"
+      ? "https://rpc.testnet.fastnear.com"
       : "https://rpc.mainnet.near.org",
 } as const;
 

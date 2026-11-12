@@ -8,12 +8,9 @@ import type {
   SpendingView,
 } from "@/lib/contract-types";
 import {
-  guardAccount,
-  guardViews,
   hasConfiguredGuard,
   nearConfig,
 } from "@/lib/near";
-import { getRecentPayments } from "@/lib/payment-history";
 
 export type GuardStateData = {
   owner: string;
@@ -33,39 +30,31 @@ type GuardState = {
 };
 
 async function loadGuardState(): Promise<GuardStateData> {
-  const [
-    owner,
-    agent,
-    policy,
-    spending,
-    balance,
-    payments,
-  ] = await Promise.all([
-    guardViews.getOwner(),
-    guardViews.getAgent(),
-    guardViews.getPolicy(),
-    guardViews.getSpending(),
-    guardAccount.getBalance(),
-    getRecentPayments(),
-  ]);
+  const response = await fetch("/api/guard/state", {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load Guard state");
+  }
+
+  const data: unknown = await response.json();
 
   if (
-    typeof owner !== "string" ||
-    typeof agent !== "string" ||
-    !policy ||
-    !spending
+    typeof data !== "object" ||
+    data === null ||
+    !("owner" in data) ||
+    !("agent" in data) ||
+    !("policy" in data) ||
+    !("spending" in data) ||
+    !("balanceYocto" in data) ||
+    !("payments" in data)
   ) {
     throw new Error("Guard returned an incomplete response");
   }
 
-  return {
-    owner,
-    agent,
-    policy,
-    spending,
-    balanceYocto: balance.amount,
-    payments,
-  };
+  return data as GuardStateData;
 }
 
 function getErrorMessage(cause: unknown): string {

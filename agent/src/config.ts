@@ -35,7 +35,7 @@ export function loadNearAIConfig(
 // Fixed testnet RPC prevents an environment override from receiving RPC data.
 import { nearAccountIdSchema } from "./types.js";
 
-export const NEAR_TESTNET_RPC_URL = "https://rpc.testnet.near.org";
+export const NEAR_TESTNET_RPC_URL = "https://rpc.testnet.fastnear.com";
 
 export interface NearPaymentConfig {
   readonly network: "testnet";
