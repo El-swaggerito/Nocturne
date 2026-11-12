@@ -1,0 +1,14 @@
+target/
+.env
+.env.*
+!.env.example
+artifacts/
+.next/
+dashboard/.next/
+dashboard/.local/
+agent/dist/
+node_modules/
+dashboard/node_modules/
+agent/node_modules/
+.vercel/
+.DS_Store
