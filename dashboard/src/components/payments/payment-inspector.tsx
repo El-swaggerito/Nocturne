@@ -1,13 +1,14 @@
 import { ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import type { PaymentView } from "@/lib/contract-types";
+import type { DashboardPaymentView } from "@/lib/contract-types";
+import { getTransactionExplorerUrl, shortenHash } from "@/lib/explorer";
 import { formatYoctoNear } from "@/lib/format-near";
 
 export function PaymentInspector({
   record,
 }: {
-  record: PaymentView | null;
+  record: DashboardPaymentView | null;
 }) {
   if (!record) {
     return (
@@ -110,6 +111,26 @@ export function PaymentInspector({
                   : "Failed"
             }
           />
+
+          {record.transactionHash ? (
+            <div className="flex items-start justify-between gap-4 py-1">
+              <span className="text-[10px] text-muted">
+                Transaction Hash
+              </span>
+
+              <a
+                href={getTransactionExplorerUrl(
+                  record.transactionHash,
+                )}
+                target="_blank"
+                rel="noreferrer"
+                title={record.transactionHash}
+                className="font-technical max-w-[65%] break-words text-right text-[9px] text-cyan hover:underline"
+              >
+                {shortenHash(record.transactionHash)}
+              </a>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -130,8 +151,9 @@ export function PaymentInspector({
       </div>
 
       <p className="mt-4 text-[9px] leading-4 text-faint">
-        Transaction hashes and historical policy snapshots are not stored in
-        PaymentView, so this dashboard does not fabricate them.
+        Transaction hashes are local submission metadata and are not stored by
+        the Guard contract. Contract fields and settlement status remain
+        authoritative on-chain.
       </p>
     </aside>
   );

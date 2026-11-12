@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { guardAccount, guardViews } from "@/lib/near";
 import { getRecentPayments } from "@/lib/payment-history";
+import { getTransactionHashesByRequestId } from "@/lib/payment-journal-metadata";
 
 export async function GET() {
   try {
@@ -12,6 +13,7 @@ export async function GET() {
       spending,
       balance,
       payments,
+      transactionHashes,
     ] = await Promise.all([
       guardViews.getOwner(),
       guardViews.getAgent(),
@@ -19,6 +21,7 @@ export async function GET() {
       guardViews.getSpending(),
       guardAccount.getBalance(),
       getRecentPayments(),
+      getTransactionHashesByRequestId(),
     ]);
 
     return NextResponse.json({
@@ -27,7 +30,14 @@ export async function GET() {
       policy,
       spending,
       balanceYocto: balance.amount,
-      payments,
+      payments: payments.map((payment) => {
+        const transactionHash =
+          transactionHashes.get(payment.request_id);
+
+        return transactionHash
+          ? { ...payment, transactionHash }
+          : payment;
+      }),
     });
   } catch {
     return NextResponse.json(

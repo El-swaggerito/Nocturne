@@ -3,6 +3,10 @@ import { Info, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { InvoiceAnalysisResult } from "@/lib/agent-api";
 import type { AgentPaymentResult } from "@/lib/payment-api";
+import {
+  getTransactionExplorerUrl,
+  shortenHash,
+} from "@/lib/explorer";
 
 type ProposalCardProps = {
   analysis: InvoiceAnalysisResult | null;
@@ -177,7 +181,25 @@ export function ProposalCard({
               <ProposalValue label="Request ID" value={paymentResult.requestId} />
             ) : null}
             {paymentResult.transactionHash ? (
-              <ProposalValue label="Transaction Hash" value={paymentResult.transactionHash} />
+              <div className="flex items-center justify-between gap-4 rounded bg-card px-2.5 py-2">
+                <span className="text-[11px] text-muted">
+                  Transaction Hash
+                </span>
+
+                <a
+                  href={getTransactionExplorerUrl(
+                    paymentResult.transactionHash,
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={paymentResult.transactionHash}
+                  className="font-technical min-w-0 truncate text-[10px] text-cyan hover:underline"
+                >
+                  {shortenHash(
+                    paymentResult.transactionHash,
+                  )}
+                </a>
+              </div>
             ) : null}
             {paymentResult.reason ? (
               <ProposalValue label="Chain Result" value={paymentResult.reason} />

@@ -17,6 +17,10 @@ export type PaymentView = {
   status: string;
 };
 
+export type DashboardPaymentView = PaymentView & {
+  transactionHash?: string;
+};
+
 export type SpendingView = {
   utc_day: number;
   daily_committed: YoctoNear;

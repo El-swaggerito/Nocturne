@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type {
-  PaymentView,
+  DashboardPaymentView,
   PolicyView,
   SpendingView,
 } from "@/lib/contract-types";
@@ -18,7 +18,7 @@ export type GuardStateData = {
   policy: PolicyView;
   spending: SpendingView;
   balanceYocto: string;
-  payments: PaymentView[];
+  payments: DashboardPaymentView[];
 };
 
 type GuardState = {
