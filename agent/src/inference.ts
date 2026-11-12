@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { InferenceClient } from "@nearai/inference-sdk/node";
 import { loadNearAIConfig, type NearAIConfig } from "./config.js";
 import { parseInvoiceProposal, type InvoiceProposal } from "./types.js";
 import { parseLabelledInvoice } from "./invoice.js";
@@ -50,13 +50,26 @@ export class InferenceError extends Error {
   }
 }
 
-export const nearAITransport: InferenceTransport = async (messages, config) => {
-  const client = new OpenAI({
+export function requireProviderTeeVerification(
+  verification: { readonly signatureKind?: string },
+): void {
+  if (verification.signatureKind !== "provider_tee") {
+    throw new InferenceError(
+      "NEAR AI response was not verified as originating from an attested model TEE.",
+    );
+  }
+}
+
+export const nearAITransport: InferenceTransport = async (
+  messages,
+  config,
+) => {
+  const client = new InferenceClient({
     apiKey: config.apiKey,
-    baseURL: config.baseURL,
-    maxRetries: 0,
-    timeout: 30_000,
+    baseUrl: config.baseURL,
+    e2ee: true,
   });
+
   const completion = await client.chat.completions.create({
     model: config.model,
     messages,
@@ -64,9 +77,16 @@ export const nearAITransport: InferenceTransport = async (messages, config) => {
     max_tokens: 700,
     response_format: { type: "json_object" },
   });
+
+  const verification = await client.verifyResponse(completion.id);
+
+  requireProviderTeeVerification(verification);
+
   return {
-    content: completion.choices[0]?.message.content ?? null,
-    finishReason: completion.choices[0]?.finish_reason ?? null,
+    content:
+      completion.choices[0]?.message.content ?? null,
+    finishReason:
+      completion.choices[0]?.finish_reason ?? null,
   };
 };
 

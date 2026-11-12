@@ -1,7 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_NEAR_AI_MODEL, NEAR_AI_BASE_URL, type NearAIConfig } from "../src/config.js";
-import { buildMessages, extractInvoiceProposal, InferenceError, SYSTEM_PROMPT } from "../src/inference.js";
+import {
+  buildMessages,
+  extractInvoiceProposal,
+  InferenceError,
+  requireProviderTeeVerification,
+  SYSTEM_PROMPT,
+} from "../src/inference.js";
 import { InvoiceValidationError } from "../src/types.js";
 
 const config: NearAIConfig = {
@@ -69,4 +75,25 @@ test("truncated, empty and malformed completions cannot produce proposals", asyn
 test("empty and oversized invoices are rejected before remote inference", async () => {
   await assert.rejects(extractInvoiceProposal("  ", { config }), InferenceError);
   await assert.rejects(extractInvoiceProposal("A".repeat(16_001), { config }), InferenceError);
+});
+
+
+test("verified model TEE responses are accepted", () => {
+  assert.doesNotThrow(() =>
+    requireProviderTeeVerification({
+      signatureKind: "provider_tee",
+    }),
+  );
+});
+
+test("gateway-only or missing verification can never become trusted inference", () => {
+  for (const verification of [
+    { signatureKind: "gateway" },
+    {},
+  ]) {
+    assert.throws(
+      () => requireProviderTeeVerification(verification),
+      InferenceError,
+    );
+  }
 });

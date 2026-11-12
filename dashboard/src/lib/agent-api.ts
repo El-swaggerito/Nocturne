@@ -1,6 +1,3 @@
-import { parseNearToYoctoNear } from "./format-near";
-import { isValidNearAccountId } from "./near-account";
-
 export type InvoiceProposal = {
   recipientId: string;
   amountNear: string;
@@ -11,111 +8,50 @@ export type InvoiceProposal = {
 export type InvoiceAnalysisResult =
   | {
       status: "proposal";
-      source: "demo-adapter";
+      source: "near-ai-tee";
       proposal: InvoiceProposal;
     }
   | {
       status: "validation-error";
-      source: "demo-adapter";
+      source: "near-ai-tee";
       message: string;
     };
 
-export type InvoiceAgent = {
-  analyseInvoice(invoiceText: string): Promise<InvoiceAnalysisResult>;
-};
+type AnalyseApiResponse =
+  | { result: InvoiceAnalysisResult }
+  | {
+      error:
+        | "invalid_request"
+        | "verified_inference_failed"
+        | "invoice_analysis_failed";
+    };
 
-function findField(
+export async function analyseInvoice(
   invoiceText: string,
-  pattern: RegExp,
-): string | null {
-  const match = invoiceText.match(pattern);
-  return match?.[1]?.trim() ?? null;
+): Promise<InvoiceAnalysisResult> {
+  const response = await fetch("/api/agent/analyse", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ invoiceText }),
+  });
+
+  let body: AnalyseApiResponse;
+
+  try {
+    body = (await response.json()) as AnalyseApiResponse;
+  } catch {
+    throw new Error("Invoice analysis returned an invalid response");
+  }
+
+  if ("result" in body) {
+    return body.result;
+  }
+
+  if (body.error === "verified_inference_failed") {
+    throw new Error("Verified NEAR AI inference failed");
+  }
+
+  throw new Error("Invoice analysis failed");
 }
-
-export const demoInvoiceAgent: InvoiceAgent = {
-  async analyseInvoice(invoiceText) {
-    const text = invoiceText.trim();
-
-    if (!text) {
-      return {
-        status: "validation-error",
-        source: "demo-adapter",
-        message: "Invoice text is required",
-      };
-    }
-
-    const recipientId = findField(
-      text,
-      /^RECIPIENT_ACCOUNT:\s*([^\s]+)$/im,
-    );
-
-    const invoiceReference = findField(
-      text,
-      /^INVOICE:\s*([^\s]+)$/im,
-    );
-
-    const amountNear =
-      findField(
-        text,
-        /^TOTAL DUE:\s*([0-9]+(?:\.[0-9]+)?)\s+NEAR$/im,
-      ) ??
-      findField(
-        text,
-        /^AMOUNT:\s*([0-9]+(?:\.[0-9]+)?)\s+NEAR$/im,
-      );
-
-    if (!recipientId) {
-      return {
-        status: "validation-error",
-        source: "demo-adapter",
-        message: "Invoice recipient could not be extracted",
-      };
-    }
-
-    if (!isValidNearAccountId(recipientId)) {
-      return {
-        status: "validation-error",
-        source: "demo-adapter",
-        message: "Invoice contains an invalid NEAR recipient",
-      };
-    }
-
-    if (!invoiceReference) {
-      return {
-        status: "validation-error",
-        source: "demo-adapter",
-        message: "Invoice reference could not be extracted",
-      };
-    }
-
-    if (!amountNear) {
-      return {
-        status: "validation-error",
-        source: "demo-adapter",
-        message: "A NEAR amount could not be extracted",
-      };
-    }
-
-    try {
-      const amountYocto =
-        parseNearToYoctoNear(amountNear);
-
-      return {
-        status: "proposal",
-        source: "demo-adapter",
-        proposal: {
-          recipientId,
-          amountNear,
-          amountYocto,
-          invoiceReference,
-        },
-      };
-    } catch {
-      return {
-        status: "validation-error",
-        source: "demo-adapter",
-        message: "Invoice contains an invalid NEAR amount",
-      };
-    }
-  },
-};

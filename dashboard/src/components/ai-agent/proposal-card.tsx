@@ -74,7 +74,7 @@ export function ProposalCard({
 
         <div className="rounded-control border border-border bg-elevated p-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan">
-            Demo adapter
+            NEAR AI Private TEE
           </p>
 
           <p className="mt-1 text-[10px] leading-4 text-muted">
@@ -100,11 +100,11 @@ export function ProposalCard({
 
   return (
     <section className="flex min-h-[590px] flex-col gap-4 rounded-card border border-border bg-card p-4">
-      <Header badge="Demo Proposal Created" />
+      <Header badge="Verified Proposal Created" />
 
       <div className="rounded-control border border-border bg-background p-3">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan">
-          Demo adapter
+          NEAR AI Private TEE
         </p>
 
         <p className="mt-1 text-[10px] leading-4 text-muted">

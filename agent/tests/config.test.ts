@@ -14,7 +14,7 @@ test("missing NEAR AI Cloud key produces a clear, non-secret error", () => {
 test("valid config never permits base URL to be overridden", () => {
   const config = loadNearAIConfig({
     NEAR_AI_KEY: "test-value-not-a-real-key",
-    NEAR_AI_MODEL: "deepseek/deepseek-v3.2",
+    NEAR_AI_MODEL: "z-ai/glm-5.3-flash",
     NEAR_AI_BASE_URL: "https://attacker.invalid/v1",
   });
   assert.equal(config.baseURL, NEAR_AI_BASE_URL);
