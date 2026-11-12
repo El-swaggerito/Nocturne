@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm --prefix ../agent run build && next build",
+    "build": "npm --prefix ../agent ci --include=dev && npm --prefix ../agent run build && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run"
