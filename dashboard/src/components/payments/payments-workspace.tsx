@@ -8,12 +8,12 @@ import {
 } from "@/components/payments/payment-filters";
 import { PaymentInspector } from "@/components/payments/payment-inspector";
 import { PaymentTable } from "@/components/payments/payment-table";
-import type { PaymentView } from "@/lib/contract-types";
+import type { DashboardPaymentView } from "@/lib/contract-types";
 
 export function PaymentsWorkspace({
   records = [],
 }: {
-  records?: PaymentView[];
+  records?: DashboardPaymentView[];
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] =
