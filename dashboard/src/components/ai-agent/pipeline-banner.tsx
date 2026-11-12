@@ -33,7 +33,7 @@ export function PipelineBanner() {
         <div className="flex flex-wrap gap-2">
           <span className="font-technical inline-flex items-center gap-2 rounded-control bg-elevated px-3 py-1.5 text-[10px] text-cyan">
             <span className="size-1.5 rounded-full bg-cyan" />
-            Demonstration Mode
+            NEAR AI Private TEE
           </span>
 
           <span className="font-technical inline-flex items-center gap-2 rounded-control bg-elevated px-3 py-1.5 text-[10px]">

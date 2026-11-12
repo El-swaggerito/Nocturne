@@ -1,6 +1,6 @@
 /** Library API only. The invoice CLI does not submit payments. */
-export { extractInvoiceProposal } from "./inference.js";
-export { invoiceProposalSchema, type InvoiceProposal } from "./types.js";
+export { extractInvoiceProposal, InferenceError } from "./inference.js";
+export { invoiceProposalSchema, InvoiceValidationError, type InvoiceProposal } from "./types.js";
 export {
   NearPaymentClient, createNearTestnetTransport,
   assertFunctionCallPermission, toPaymentArgs, interpretChainResult,

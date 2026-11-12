@@ -14,7 +14,7 @@ import {
   type SampleKey,
 } from "@/data/demo-ai-agent";
 import {
-  demoInvoiceAgent,
+  analyseInvoice as analyseInvoiceWithNearAI,
   type InvoiceAnalysisResult,
 } from "@/lib/agent-api";
 import {
@@ -71,7 +71,7 @@ export function AiAgentWorkspace() {
 
     try {
       const result =
-        await demoInvoiceAgent.analyseInvoice(invoiceText);
+        await analyseInvoiceWithNearAI(invoiceText);
       setAnalysis(result);
     } finally {
       setAnalysing(false);

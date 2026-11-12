@@ -1,6 +1,6 @@
 /** All inference credentials are server-side only; no blockchain signing key belongs here. */
 export const NEAR_AI_BASE_URL = "https://cloud-api.near.ai/v1";
-export const DEFAULT_NEAR_AI_MODEL = "deepseek/deepseek-v3.2";
+export const DEFAULT_NEAR_AI_MODEL = "z-ai/glm-5.3-flash";
 
 export interface NearAIConfig {
   readonly apiKey: string;
