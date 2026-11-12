@@ -8,3 +8,7 @@ dist/
 *.pem
 *.key
 artifacts/
+.vercel/
+.env
+.env.*
+!.env.example
