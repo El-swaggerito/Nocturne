@@ -42,7 +42,7 @@ export interface NearPaymentConfig {
   readonly rpcUrl: typeof NEAR_TESTNET_RPC_URL;
   readonly contractId: string;
   readonly agentId: string;
-  readonly agentSecretKey: string;
+  readonly agentSecretKey?: string;
   readonly journalDir: string;
   readonly enableTestnetWrites: boolean;
   readonly contractInterfaceApproved: boolean;
@@ -61,20 +61,27 @@ export function loadNearPaymentConfig(
   if (!agentId || !nearAccountIdSchema.safeParse(agentId).success || agentId === contractId) {
     throw new ConfigurationError("NEAR_AGENT_ACCOUNT_ID is missing or invalid, or equals the Guard account.");
   }
-  if (!agentSecretKey?.startsWith("ed25519:") || agentSecretKey.length < 30) {
-    throw new ConfigurationError("A restricted NEAR_AGENT_PRIVATE_KEY is required; do not use an owner key.");
-  }
   if (environment.NEAR_NETWORK && environment.NEAR_NETWORK !== "testnet") {
     throw new ConfigurationError("Issue #10 only supports the NEAR testnet.");
   }
+
   const enableTestnetWrites = environment.NEAR_ENABLE_TESTNET_WRITES === "yes";
   const contractInterfaceApproved = environment.NEAR_CONTRACT_INTERFACE_AGREED === "yes";
+
+  if (
+    enableTestnetWrites &&
+    (!agentSecretKey?.startsWith("ed25519:") || agentSecretKey.length < 30)
+  ) {
+    throw new ConfigurationError(
+      "A restricted NEAR_AGENT_PRIVATE_KEY is required when testnet writes are enabled; do not use an owner key.",
+    );
+  }
   return {
     network: "testnet",
     rpcUrl: NEAR_TESTNET_RPC_URL,
     contractId,
     agentId,
-    agentSecretKey,
+    ...(agentSecretKey ? { agentSecretKey } : {}),
     journalDir: environment.NEAR_PAYMENT_JOURNAL_DIR?.trim() || ".local/payment-requests",
     enableTestnetWrites,
     contractInterfaceApproved,

@@ -59,17 +59,55 @@ test("access key verification rejects FullAccess, wrong contract and extra/wildc
   ]) assert.throws(() => assertFunctionCallPermission(invalid, "guard.testnet"), RestrictedKeyError);
 });
 
-test("configuration is pinned to testnet and fails without a dedicated agent signing key", () => {
-  assert.throws(() => loadNearPaymentConfig({ NEAR_GUARD_ACCOUNT_ID: "guard.testnet", NEAR_AGENT_ACCOUNT_ID: "agent.testnet" }), ConfigurationError);
-  assert.throws(() => loadNearPaymentConfig({ NEAR_GUARD_ACCOUNT_ID: "guard.testnet", NEAR_AGENT_ACCOUNT_ID: "agent.testnet", NEAR_AGENT_PRIVATE_KEY: "ed25519:" }), ConfigurationError);
+test("read-only configuration does not require an agent signing key", () => {
   const loaded = loadNearPaymentConfig({
-    NEAR_NETWORK: "testnet", NEAR_GUARD_ACCOUNT_ID: "guard.testnet", NEAR_AGENT_ACCOUNT_ID: "agent.testnet",
-    NEAR_AGENT_PRIVATE_KEY: `ed25519:${"x".repeat(42)}`, NEAR_RPC_URL: "https://evil.example",
+    NEAR_NETWORK: "testnet",
+    NEAR_GUARD_ACCOUNT_ID: "guard.testnet",
+    NEAR_AGENT_ACCOUNT_ID: "agent.testnet",
+    NEAR_ENABLE_TESTNET_WRITES: "no",
+    NEAR_RPC_URL: "https://evil.example",
   });
+
   assert.equal(loaded.rpcUrl, NEAR_TESTNET_RPC_URL);
   assert.equal(loaded.enableTestnetWrites, false);
-  assert.equal(loaded.contractInterfaceApproved, false);
+  assert.equal(loaded.agentSecretKey, undefined);
   assert.equal(loaded.network, "testnet");
+});
+
+test("write-enabled configuration requires a dedicated restricted agent signing key", () => {
+  assert.throws(
+    () =>
+      loadNearPaymentConfig({
+        NEAR_GUARD_ACCOUNT_ID: "guard.testnet",
+        NEAR_AGENT_ACCOUNT_ID: "agent.testnet",
+        NEAR_ENABLE_TESTNET_WRITES: "yes",
+      }),
+    ConfigurationError,
+  );
+
+  assert.throws(
+    () =>
+      loadNearPaymentConfig({
+        NEAR_GUARD_ACCOUNT_ID: "guard.testnet",
+        NEAR_AGENT_ACCOUNT_ID: "agent.testnet",
+        NEAR_AGENT_PRIVATE_KEY: "ed25519:",
+        NEAR_ENABLE_TESTNET_WRITES: "yes",
+      }),
+    ConfigurationError,
+  );
+
+  const loaded = loadNearPaymentConfig({
+    NEAR_NETWORK: "testnet",
+    NEAR_GUARD_ACCOUNT_ID: "guard.testnet",
+    NEAR_AGENT_ACCOUNT_ID: "agent.testnet",
+    NEAR_AGENT_PRIVATE_KEY: `ed25519:${"x".repeat(42)}`,
+    NEAR_ENABLE_TESTNET_WRITES: "yes",
+    NEAR_CONTRACT_INTERFACE_AGREED: "yes",
+  });
+
+  assert.equal(loaded.enableTestnetWrites, true);
+  assert.equal(loaded.contractInterfaceApproved, true);
+  assert.ok(loaded.agentSecretKey);
 });
 
 test("invalid AI proposal fails before touching journal, access key or network", async () => withTemp(async (dir) => {
@@ -81,6 +119,35 @@ test("invalid AI proposal fails before touching journal, access key or network",
   const result = await client.submit({ ...validProposal, amountYoctoNear: "1.5", admin: true });
   assert.equal(result.status, "ai_rejected");
   assert.equal(calls, 0);
+}));
+
+test("read-only payment preparation works without any signing key", async () => withTemp(async (dir) => {
+  const loaded = loadNearPaymentConfig({
+    NEAR_NETWORK: "testnet",
+    NEAR_GUARD_ACCOUNT_ID: "guard.testnet",
+    NEAR_AGENT_ACCOUNT_ID: "agent.testnet",
+    NEAR_ENABLE_TESTNET_WRITES: "no",
+    NEAR_PAYMENT_JOURNAL_DIR: dir,
+  });
+
+  assert.equal(loaded.agentSecretKey, undefined);
+
+  const client = new NearPaymentClient(
+    loaded,
+    mockTransport({
+      async assertRestrictedKey() {
+        throw new Error("Signing path must not be reached");
+      },
+      async sendPayment() {
+        throw new Error("Broadcast path must not be reached");
+      },
+    }),
+  );
+
+  const result = await client.submit(validProposal);
+
+  assert.equal(result.status, "prepared");
+  assert.equal(result.reason, "testnet_submissions_disabled_until_contract_review");
 }));
 
 test("default mode prepares durable ID but refuses all testnet broadcasts", async () => withTemp(async (dir) => {

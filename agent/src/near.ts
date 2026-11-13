@@ -210,22 +210,37 @@ export class NearPaymentClient {
 
 /** Only testnet; refuses to broadcast with a FullAccess or wrong-method key. */
 export function createNearTestnetTransport(): NearPaymentTransport {
-  async function sdk(config: NearPaymentConfig) {
+  async function createProvider(config: NearPaymentConfig) {
     const near = await import("near-api-js");
-    const provider = new near.JsonRpcProvider({ url: config.rpcUrl });
-    const secret = config.agentSecretKey as KeyPairString;
-    const account = new near.Account(config.agentId, provider, secret);
-    return { near, provider, account, secret };
+    return {
+      near,
+      provider: new near.JsonRpcProvider({ url: config.rpcUrl }),
+    };
+  }
+
+  async function signer(config: NearPaymentConfig) {
+    const { near, provider } = await createProvider(config);
+    const secret = config.agentSecretKey;
+
+    if (!secret) {
+      throw new RestrictedKeyError(
+        "Restricted agent signing key is unavailable; no transaction was sent.",
+      );
+    }
+
+    const key = secret as KeyPairString;
+    const account = new near.Account(config.agentId, provider, key);
+    return { near, provider, account, secret: key };
   }
   return {
     async assertRestrictedKey(config) {
-      const { near, account, secret } = await sdk(config);
+      const { near, account, secret } = await signer(config);
       const publicKey = near.KeyPair.fromString(secret).getPublicKey().toString();
       const key = await account.getAccessKey(publicKey);
       assertFunctionCallPermission(key.permission, config.contractId);
     },
     async readNextRequestId(config) {
-      const { provider } = await sdk(config);
+      const { provider } = await createProvider(config);
       return provider.callFunction({
         contractId: config.contractId,
         method: "get_next_request_id",
@@ -233,7 +248,7 @@ export function createNearTestnetTransport(): NearPaymentTransport {
       });
     },
     async sendPayment(config, args) {
-      const { account } = await sdk(config);
+      const { account } = await signer(config);
       return account.callFunctionRaw({
         contractId: config.contractId,
         methodName: "request_payment",
@@ -246,7 +261,7 @@ export function createNearTestnetTransport(): NearPaymentTransport {
     async readSettlement(config, requestId) {
       // PROVISIONAL read-only getter, to be aligned with the #6 Guard API.
       // No signing action is sent by this call.
-      const { provider } = await sdk(config);
+      const { provider } = await createProvider(config);
       return provider.callFunction({
         contractId: config.contractId,
         method: "get_payment",
