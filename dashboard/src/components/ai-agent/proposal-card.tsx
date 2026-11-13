@@ -78,7 +78,7 @@ export function ProposalCard({
           </p>
 
           <p className="mt-1 text-[10px] leading-4 text-muted">
-            This result came from the local Issue #13 extraction adapter.
+            This result came from server-side NEAR AI inference with TEE verification.
             No blockchain transaction was created or submitted.
           </p>
         </div>
@@ -108,7 +108,8 @@ export function ProposalCard({
         </p>
 
         <p className="mt-1 text-[10px] leading-4 text-muted">
-          These fields were extracted locally. They have not been authorised
+          These fields were extracted by verified NEAR AI inference and passed
+          deterministic source grounding. They have not been authorised
           by the Guard or submitted by the restricted agent.
         </p>
       </div>
