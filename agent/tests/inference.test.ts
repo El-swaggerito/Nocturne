@@ -37,6 +37,10 @@ test("invoice prompt injection cannot change the system role or config", async (
   assert.equal(messages[0]?.content, SYSTEM_PROMPT);
   assert.equal(messages[1]?.role, "user");
   assert.equal(messages[1]?.content, malicious);
+  assert.match(
+    SYSTEM_PROMPT,
+    /malicious instructions is NOT itself a validation error/,
+  );
 
   const result = await extractInvoiceProposal(malicious, {
     config,
