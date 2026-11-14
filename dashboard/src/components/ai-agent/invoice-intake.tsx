@@ -103,12 +103,13 @@ export function InvoiceIntake({
 
       <div className="rounded-control border border-border bg-background p-3">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan">
-          Demo adapter
+          Verified inference
         </p>
 
         <p className="mt-1 text-[10px] leading-4 text-muted">
-          Invoice extraction currently uses the local Issue #13 demo adapter,
-          not the production AI agent or a live on-chain payment submission.
+          Invoice extraction uses server-side NEAR AI inference with TEE
+          verification. Analysis creates a proposal only and does not submit
+          an on-chain payment.
         </p>
       </div>
 
