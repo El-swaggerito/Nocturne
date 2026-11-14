@@ -59,7 +59,9 @@ The Guard refuses payments that would reduce its available balance below the con
 
 ## Testnet deployment
 
-Not performed yet.
+Deployment completed and verified on NEAR Testnet.
+
+The deployed Guard contract, owner account and restricted agent account remain the authoritative testnet environment used by the Nocturne demo.
 
 Contract account: `nocturne-guard-26.testnet`
 
@@ -141,3 +143,63 @@ Forbidden owner-method evidence:
 - Result: rejected by NEAR access-key permissions before contract execution.
 - Error: `Transaction method name <set_frozen> isn't allowed by the access key.`
 - No transaction ID was produced because the transaction was rejected before execution.
+
+## Final end-to-end dashboard payment evidence
+
+The production dashboard and agent payment path were later verified with an explicitly authorised `0.01 NEAR` Testnet payment.
+
+- Invoice reference: `DASHBOARD-LIVE-002`
+- Recipient: `nocturne-owner-26.testnet`
+- Amount: `10000000000000000000000` yoctoNEAR (`0.01 NEAR`)
+- Request ID: `req_00000000000000000000000000000003`
+- Final contract status: `confirmed`
+- Verification result: `verified_contract_settlement`
+- Next request ID after settlement: `req_00000000000000000000000000000004`
+- Pending total after settlement: `0`
+
+This payment was submitted only after explicit approval. The public production deployment currently keeps automated Testnet writes disabled.
+
+## Final security demonstration evidence
+
+Additional on-chain security scenarios were verified after the initial deployment run.
+
+### Unapproved recipient rejection
+
+Transaction:
+
+`4fLL4p5gLyx4gqLUZiZqvxvwRDBinsDthZW2gYonJriQ`
+
+The Guard rejected the payment because the recipient was not approved.
+
+### Per-transaction limit rejection
+
+Transaction:
+
+`3jjt6GrLXcH23qSiDBvfU5o8YHRCCVFzFhhXsgXS4NNk`
+
+The attempted payment exceeded the configured per-transaction limit.
+
+### Daily-limit rejection
+
+Transaction:
+
+`4RNrJkLoL5vmjCDbG2D8mZV2ePFnTXrp7qB2uWv8Kw2V`
+
+The Guard rejected the payment because the remaining daily allowance was insufficient.
+
+### Emergency freeze
+
+Freeze transaction:
+
+`7ESDzrwY6xw7ebfGqYSgfiz7Be6VzoSMAcj9u64ddJ53`
+
+Payment rejected while frozen:
+
+`GJenpJbvrWMTU5gpMK2cxM9PEo1izaToAbMcvVbqkGy7`
+
+Unfreeze transaction:
+
+`4oTdxNNrwtH9t4WghjwZ22BGDMBVXUffKJMSM7DvF5Rk`
+
+These transactions demonstrate that the Guard contract, rather than the AI agent or dashboard, remains the final authority over payment execution.
+
