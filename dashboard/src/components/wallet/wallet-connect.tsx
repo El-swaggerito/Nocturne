@@ -41,7 +41,7 @@ export function WalletConnect() {
         <WalletCards size={14} className="text-cyan" />
 
         <span className="hidden text-[10px] uppercase tracking-wider text-muted xl:inline">
-          Owner
+          Connected
         </span>
 
         <span className="font-technical text-[10px]">
@@ -57,7 +57,7 @@ export function WalletConnect() {
         <WalletCards size={14} className="text-cyan" />
 
         <span className="hidden text-[10px] uppercase tracking-wider text-muted xl:inline">
-          Owner
+          Connected
         </span>
 
         <span
